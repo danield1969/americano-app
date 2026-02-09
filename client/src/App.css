@@ -193,14 +193,14 @@ nav {
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
-.footer-content glass-panel {
+.footer-content {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding-left: 10px;
 }
 
 .footer-derechos {
   font-size: 9px;
   color: #475569;
+  padding-left: 10px;
 }
