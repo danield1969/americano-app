@@ -1,0 +1,11 @@
+{
+  "name": "americano-app",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "npm install --prefix client && npm run build --prefix client && npm install --prefix server && npm run build --prefix server && cp -r client/dist server/dist/public",
+    "start": "node server/dist/index.js"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

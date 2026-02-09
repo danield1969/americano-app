@@ -1,0 +1,177 @@
+.history-container {
+  padding: 1rem;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.history-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.tournament-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tournament-card {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid transparent;
+  gap: 0.75rem;
+}
+
+.tournament-card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--accent-primary);
+}
+
+.t-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.t-location {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: white;
+}
+
+.t-date {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: #94a3b8;
+  text-transform: capitalize;
+}
+
+.t-meta {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.t-courts,
+.t-matches {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+}
+
+.t-matches::before {
+  content: "•";
+  margin-right: 0.5rem;
+  opacity: 0.5;
+}
+
+.t-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-badge.progress {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.status-badge.completed {
+  background: rgba(74, 222, 128, 0.1);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.delete-history-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #64748b;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-history-btn:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.delete-history-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.chevron {
+  display: none;
+  /* Hide chevron on mobile card stack */
+  color: #475569;
+}
+
+.empty-history {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #64748b;
+  border: 2px dashed rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  font-size: 0.9rem;
+}
+
+@media (min-width: 640px) {
+  .history-container {
+    padding: 2rem;
+  }
+
+  .history-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .tournament-card {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .t-location {
+    font-size: 1.2rem;
+  }
+
+  .t-status {
+    width: auto;
+    gap: 1.5rem;
+  }
+
+  .chevron {
+    display: block;
+  }
+}
