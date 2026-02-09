@@ -267,4 +267,52 @@ router.post('/:id/shuffle', async (req, res) => {
 });
 
 
+// Simulate Tournament (Fill all matches with scores)
+router.post('/:id/simulate', async (req, res) => {
+  const { id } = req.params;
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // 1. Get all matches for this tournament
+    const [matches] = await connection.query('SELECT id FROM matches WHERE tournament_id = ?', [id]);
+
+    for (const match of (matches as any[])) {
+      // Check if match already has scores
+      const [scores] = await connection.query('SELECT score_obtained FROM match_players WHERE match_id = ? AND score_obtained > 0', [match.id]);
+      if ((scores as any[]).length === 0) {
+        // Generate random scores
+        const s1 = Math.floor(Math.random() * 11);
+        const s2 = Math.floor(Math.random() * 11);
+
+        await connection.query('UPDATE match_players SET score_obtained = ? WHERE match_id = ? AND opponent_team_id = 1', [s1, match.id]);
+        await connection.query('UPDATE match_players SET score_obtained = ? WHERE match_id = ? AND opponent_team_id = 2', [s2, match.id]);
+      }
+    }
+
+    // 2. Recalculate all standings for this tournament
+    const [players] = await connection.query('SELECT player_id FROM tournament_players WHERE tournament_id = ?', [id]);
+    for (const p of (players as any[])) {
+      const [sumRow] = (await connection.query(`
+            SELECT SUM(score_obtained) as total 
+            FROM match_players mp 
+            JOIN matches m ON mp.match_id = m.id 
+            WHERE mp.player_id = ? AND m.tournament_id = ? AND mp.is_filler = 0
+        `, [p.player_id, id])) as any;
+
+      const newTotal = sumRow[0].total || 0;
+      await connection.query('UPDATE tournament_players SET current_score = ? WHERE player_id = ? AND tournament_id = ?', [newTotal, p.player_id, id]);
+    }
+
+    await connection.commit();
+    res.json({ message: 'Resultados simulados con éxito' });
+  } catch (error: any) {
+    if (connection) await connection.rollback();
+    console.error('Simulate Error:', error);
+    res.status(500).json({ error: 'Error al simular: ' + error.message });
+  } finally {
+    connection.release();
+  }
+});
+
 export default router;

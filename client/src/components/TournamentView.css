@@ -248,7 +248,8 @@
 }
 
 .shuffle-btn,
-.test-btn {
+.test-btn,
+.simulate-btn {
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 0.7rem;
@@ -267,7 +268,8 @@
   color: #38bdf8;
 }
 
-.test-btn {
+.test-btn,
+.simulate-btn {
   background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.2);
   color: #f59e0b;
@@ -278,13 +280,15 @@
   border-color: #38bdf8;
 }
 
-.test-btn:hover:not(:disabled) {
+.test-btn:hover:not(:disabled),
+.simulate-btn:hover:not(:disabled) {
   background: rgba(245, 158, 11, 0.2);
   border-color: #f59e0b;
 }
 
 .shuffle-btn:disabled,
-.test-btn:disabled {
+.test-btn:disabled,
+.simulate-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

@@ -84,6 +84,10 @@ export default function TournamentSetup({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!location.trim()) {
+      alert('Por favor ingrese el lugar de la jornada.');
+      return;
+    }
     createMutation.mutate({
       date,
       location,
@@ -124,7 +128,6 @@ export default function TournamentSetup({
                 className="input-field"
                 value={location}
                 onChange={e => setLocation(e.target.value)}
-                required
               />
             </div>
           </div>
@@ -181,7 +184,7 @@ export default function TournamentSetup({
         <button
           type="submit"
           className="btn-primary full-width"
-          disabled={selectedPlayers.length < 8 || !location.trim() || createMutation.isPending}
+          disabled={selectedPlayers.length < 8 || createMutation.isPending}
         >
           {createMutation.isPending ? 'Procesando...' : (existingTournamentId ? 'Actualizar Jugadores' : 'Comenzar Torneo')}
         </button>

@@ -54,7 +54,12 @@ export const generateRound = async (tournamentId: number) => {
       return Math.random() - 0.5;
     });
 
-    const maxPlayers = courtsAvailable * 4;
+    // Smart Court Selection: Only use as many courts as needed for players who still need games
+    const playersNeedingGames = players.filter(p => p.gamesPlayed < matchesPerPlayer).length;
+    const neededMatches = Math.ceil(playersNeedingGames / 4);
+    const actualMatchesToGenerate = Math.max(1, Math.min(courtsAvailable, neededMatches));
+
+    const maxPlayers = actualMatchesToGenerate * 4;
     const selectedPlayers = players.slice(0, maxPlayers);
 
     if (selectedPlayers.length < 4) {

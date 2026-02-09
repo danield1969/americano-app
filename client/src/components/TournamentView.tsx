@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trophy, Activity, Edit2, Check, RefreshCcw, MapPin } from 'lucide-react';
 import './TournamentView.css';
-import { getTournamentMatches, getTournamentStandings, submitMatchScore, shuffleTournament, getTournament } from '../api';
+import { getTournamentMatches, getTournamentStandings, submitMatchScore, shuffleTournament, getTournament, simulateTournament } from '../api';
 
 interface TournamentViewProps {
   tournamentId: number;
@@ -54,6 +54,16 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
       alert('Partidos revueltos con éxito');
     },
     onError: (err: any) => alert(err.response?.data?.error || 'Error al revolver partidos')
+  });
+
+  const simulateMutation = useMutation({
+    mutationFn: () => simulateTournament(tournamentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] });
+      queryClient.invalidateQueries({ queryKey: ['standings', tournamentId] });
+      alert('Resultados simulados con éxito');
+    },
+    onError: (err: any) => alert(err.response?.data?.error || 'Error al simular resultados')
   });
 
 
@@ -128,6 +138,16 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                   disabled={shuffleMutation.isPending}
                 >
                   <RefreshCcw size={14} className={shuffleMutation.isPending ? 'spin' : ''} /> Revolver Partidos
+                </button>
+                <button
+                  className="simulate-btn"
+                  onClick={() => {
+                    if (confirm('¿Simular resultados aleatorios para todos los partidos?')) simulateMutation.mutate();
+                  }}
+                  disabled={simulateMutation.isPending}
+                  style={{ marginLeft: '10px' }}
+                >
+                  <Trophy size={14} className={simulateMutation.isPending ? 'spin' : ''} /> Simular Resultados
                 </button>
               </div>
             )}
