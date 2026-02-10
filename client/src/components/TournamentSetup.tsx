@@ -127,6 +127,7 @@ export default function TournamentSetup({
                 placeholder="Ej. Puerto Azul"
                 className="input-field"
                 value={location}
+                required
                 onChange={e => setLocation(e.target.value)}
               />
             </div>
