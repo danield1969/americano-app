@@ -194,12 +194,13 @@ nav {
 }
 
 .footer-content {
+  margin-top: 10px;
   display: flex;
   align-items: center;
 }
 
 .footer-derechos {
-  font-size: 9px;
+  font-size: 12px;
   color: #475569;
   padding-left: 10px;
 }

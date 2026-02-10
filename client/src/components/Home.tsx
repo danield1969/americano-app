@@ -10,13 +10,12 @@ export default function Home({ onNavigate }: HomeProps) {
     <div className="home-container">
       <section className="hero-section">
         <div className="hero-content">
-          <div className="badge animate-fade-in">🎾 Americano Tournament Manager</div>
           <h1 className="hero-title animate-slide-up">
             Eleva tu juego al <span className="text-gradient">siguiente nivel</span>
           </h1>
           <p className="hero-subtitle animate-slide-up-delay">
             La plataforma definitiva para gestionar torneos de tenis estilo Americano.
-            Organiza, puntúa y escala en el ranking global con elegancia y precisión.
+            <br />Organiza, puntúa y escala en el ranking global con elegancia y precisión.
           </p>
         </div>
       </section>
@@ -80,6 +79,7 @@ export default function Home({ onNavigate }: HomeProps) {
       </div>
 
       <footer className="home-footer animate-fade-in">
+        <div className="badge animate-fade-in">🎾 Americano Tournament Manager</div>
         <div className="footer-item">
           <ShieldCheck size={16} /> <span>Datos seguros</span>
         </div>
