@@ -169,7 +169,7 @@ function App() {
 
         <footer className="main-footer">
           <div className="footer-content glass-panel">
-            <p className="footer-derechos">Daniel Domínguez • Todos los derechos reservados</p>
+            <p className="footer-derechos"> © 2026 • Todos los derechos reservados • Daniel Domínguez</p>
           </div>
         </footer>
       </div>

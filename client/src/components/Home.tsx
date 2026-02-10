@@ -80,11 +80,13 @@ export default function Home({ onNavigate }: HomeProps) {
 
       <footer className="home-footer animate-fade-in">
         <div className="badge animate-fade-in">🎾 Americano Tournament Manager</div>
-        <div className="footer-item">
-          <ShieldCheck size={16} /> <span>Datos seguros</span>
-        </div>
-        <div className="footer-item">
-          <Star size={16} /> <span>Premium Experience</span>
+        <div>
+          <div className="footer-item">
+            <ShieldCheck size={16} /> <span>Datos seguros</span>
+          </div>
+          <div className="footer-item">
+            <Star size={16} /> <span>Premium Experience</span>
+          </div>
         </div>
       </footer>
     </div>
