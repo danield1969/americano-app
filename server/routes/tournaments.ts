@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../config/database';
-import { generateTournamentPlan } from '../services/matchmaker';
+import { generateTournamentPlan, generateRound } from '../services/matchmaker';
 
 const router = Router();
 
