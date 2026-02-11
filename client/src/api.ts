@@ -86,6 +86,11 @@ export const submitMatchScore = async (matchId: number, team1Score: number, team
   return response.data;
 };
 
+export const updateMatchPlayer = async (matchId: number, oldPlayerId: number, newPlayerId: number) => {
+  const response = await api.put(`/matches/${matchId}/players`, { oldPlayerId, newPlayerId });
+  return response.data;
+};
+
 export const getGlobalStats = async () => {
   const response = await api.get('/players/stats/global');
   return response.data;

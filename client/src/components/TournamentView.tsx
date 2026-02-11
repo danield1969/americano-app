@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trophy, Activity, Edit2, Check, RefreshCcw, MapPin } from 'lucide-react';
 import './TournamentView.css';
-import { getTournamentMatches, getTournamentStandings, submitMatchScore, getTournament, simulateTournament, generateNextRound, shuffleMatch } from '../api';
+import { getTournamentMatches, getTournamentStandings, submitMatchScore, getTournament, simulateTournament, generateNextRound, shuffleMatch, updateMatchPlayer } from '../api';
 
 interface TournamentViewProps {
   tournamentId: number;
@@ -53,6 +53,15 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
       queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] });
     },
     onError: (err: any) => alert(err.response?.data?.error || 'Error al revolver el partido')
+  });
+
+  const updatePlayerMutation = useMutation({
+    mutationFn: (data: { matchId: number, oldPlayerId: number, newPlayerId: number }) =>
+      updateMatchPlayer(data.matchId, data.oldPlayerId, data.newPlayerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] });
+    },
+    onError: (err: any) => alert(err.response?.data?.error || 'Error al actualizar jugador')
   });
 
   const simulateMutation = useMutation({
@@ -205,8 +214,29 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                               <div className="team-row">
                                 <div className="team-info">
                                   {team1.map((p: any) => (
-                                    <div key={p.player_id} className={`player-name ${p.is_filler ? 'filler' : ''}`}>
-                                      {p.name} {p.is_filler === 1 && <span className="filler-tag">(C)</span>}
+                                    <div key={p.player_id} className="player-selector-container">
+                                      {dbScore1 === 0 && dbScore2 === 0 ? (
+                                        <select
+                                          className="player-select-inline"
+                                          value={p.player_id}
+                                          onChange={(e) => updatePlayerMutation.mutate({
+                                            matchId: match.id,
+                                            oldPlayerId: p.player_id,
+                                            newPlayerId: parseInt(e.target.value)
+                                          })}
+                                          disabled={updatePlayerMutation.isPending}
+                                        >
+                                          {standings?.map((s: any) => (
+                                            <option key={s.player_id} value={s.player_id}>
+                                              {s.name}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      ) : (
+                                        <div className={`player-name ${p.is_filler ? 'filler' : ''}`}>
+                                          {p.name} {p.is_filler === 1 && <span className="filler-tag">(C)</span>}
+                                        </div>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
@@ -237,8 +267,29 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                               <div className="team-row">
                                 <div className="team-info">
                                   {team2.map((p: any) => (
-                                    <div key={p.player_id} className={`player-name ${p.is_filler ? 'filler' : ''}`}>
-                                      {p.name} {p.is_filler === 1 && <span className="filler-tag">(C)</span>}
+                                    <div key={p.player_id} className="player-selector-container">
+                                      {dbScore1 === 0 && dbScore2 === 0 ? (
+                                        <select
+                                          className="player-select-inline"
+                                          value={p.player_id}
+                                          onChange={(e) => updatePlayerMutation.mutate({
+                                            matchId: match.id,
+                                            oldPlayerId: p.player_id,
+                                            newPlayerId: parseInt(e.target.value)
+                                          })}
+                                          disabled={updatePlayerMutation.isPending}
+                                        >
+                                          {standings?.map((s: any) => (
+                                            <option key={s.player_id} value={s.player_id}>
+                                              {s.name}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      ) : (
+                                        <div className={`player-name ${p.is_filler ? 'filler' : ''}`}>
+                                          {p.name} {p.is_filler === 1 && <span className="filler-tag">(C)</span>}
+                                        </div>
+                                      )}
                                     </div>
                                   ))}
                                 </div>

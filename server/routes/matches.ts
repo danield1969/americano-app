@@ -74,4 +74,66 @@ router.post('/:id/score', async (req, res) => {
   }
 });
 
+// Update Individual Match Player
+router.put('/:id/players', async (req, res) => {
+  const { id } = req.params;
+  const { oldPlayerId, newPlayerId } = req.body;
+
+  if (!oldPlayerId || !newPlayerId) {
+    return res.status(400).json({ error: 'oldPlayerId and newPlayerId are required' });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // Check if new player is already in the match
+    const [existing] = (await connection.query(
+      'SELECT player_id FROM match_players WHERE match_id = ? AND player_id = ?',
+      [id, newPlayerId]
+    )) as any;
+
+    if (existing.length > 0) {
+      throw new Error('El jugador ya está en este partido');
+    }
+
+    // 1. Get tournament info to check matches_per_player
+    const [mRow] = (await connection.query('SELECT tournament_id FROM matches WHERE id = ?', [id])) as any;
+    const tournamentId = mRow[0].tournament_id;
+    const [tRow] = (await connection.query('SELECT matches_per_player FROM tournaments WHERE id = ?', [tournamentId])) as any;
+    const matchesPerPlayer = tRow[0].matches_per_player;
+
+    // 2. Count matches already played by the NEW player in this tournament (excluding this match if it were already there, but we checked it isn't)
+    const [countRow] = (await connection.query(`
+      SELECT COUNT(*) as count 
+      FROM match_players mp
+      JOIN matches m ON mp.match_id = m.id
+      WHERE mp.player_id = ? AND m.tournament_id = ?
+    `, [newPlayerId, tournamentId])) as any;
+    const gamesPlayed = countRow[0].count;
+    const isFiller = gamesPlayed >= matchesPerPlayer;
+
+    // 3. Update the player itself and its filler status
+    await connection.query(
+      'UPDATE match_players SET player_id = ?, is_filler = ? WHERE match_id = ? AND player_id = ?',
+      [newPlayerId, isFiller ? 1 : 0, id, oldPlayerId]
+    );
+
+    // 4. Update the partner reference in the other row (the one that had oldPlayerId as partner)
+    await connection.query(
+      'UPDATE match_players SET partner_id = ? WHERE match_id = ? AND partner_id = ?',
+      [newPlayerId, id, oldPlayerId]
+    );
+
+    await connection.commit();
+    res.json({ success: true });
+  } catch (error: any) {
+    await connection.rollback();
+    console.error(error);
+    res.status(500).json({ error: error.message || 'Error updating player' });
+  } finally {
+    connection.release();
+  }
+});
+
 export default router;
