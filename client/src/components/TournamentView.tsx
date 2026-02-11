@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trophy, Activity, Edit2, Check, RefreshCcw, MapPin } from 'lucide-react';
 import './TournamentView.css';
-import { getTournamentMatches, getTournamentStandings, submitMatchScore, shuffleTournament, getTournament, simulateTournament, generateNextRound } from '../api';
+import { getTournamentMatches, getTournamentStandings, submitMatchScore, getTournament, simulateTournament, generateNextRound, shuffleMatch } from '../api';
 
 interface TournamentViewProps {
   tournamentId: number;
@@ -47,13 +47,12 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
     }
   });
 
-  const shuffleMutation = useMutation({
-    mutationFn: () => shuffleTournament(tournamentId),
+  const shuffleMatchMutation = useMutation({
+    mutationFn: (matchId: number) => shuffleMatch(matchId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] });
-      alert('Partidos revueltos con éxito');
     },
-    onError: (err: any) => alert(err.response?.data?.error || 'Error al revolver partidos')
+    onError: (err: any) => alert(err.response?.data?.error || 'Error al revolver el partido')
   });
 
   const simulateMutation = useMutation({
@@ -70,7 +69,6 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
     mutationFn: () => generateNextRound(tournamentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] });
-      alert('Siguiente ronda generada con éxito');
     },
     onError: (err: any) => alert(err.response?.data?.error || 'Error al generar ronda')
   });
@@ -80,7 +78,6 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
     setScores(prev => ({ ...prev, [`${matchId}_${team}`]: val }));
   };
 
-  const hasAnyScores = matchData?.players?.some((p: any) => p.score_obtained > 0);
 
   const handleSaveScore = (matchId: number) => {
     // Get latest players data from matchData to find current DB scores
@@ -129,24 +126,14 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                 return p.some((pp: any) => pp.score_obtained > 0);
               }).length || 0}</span>
             </div>
-            {!hasAnyScores && !matchesLoading && matchData?.matches?.length > 0 && (
+            {!matchesLoading && matchData?.matches?.length > 0 && (
               <div className="header-actions">
-                <button
-                  className="shuffle-btn"
-                  onClick={() => {
-                    if (confirm('¿Revolver todos los partidos aleatoriamente?')) shuffleMutation.mutate();
-                  }}
-                  disabled={shuffleMutation.isPending}
-                >
-                  <RefreshCcw size={14} className={shuffleMutation.isPending ? 'spin' : ''} /> Revolver Partidos
-                </button>
                 <button
                   className="simulate-btn"
                   onClick={() => {
                     if (confirm('¿Simular resultados aleatorios para todos los partidos?')) simulateMutation.mutate();
                   }}
                   disabled={simulateMutation.isPending}
-                  style={{ marginLeft: '10px' }}
                 >
                   <Trophy size={14} className={simulateMutation.isPending ? 'spin' : ''} /> Simular Resultados
                 </button>
@@ -176,15 +163,21 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
       <div className="view-content">
         {activeTab === 'matches' && (
           <div className="matches-section">
-            <div className="actions-bar" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
-              <button
-                className="btn-primary"
-                onClick={() => nextRoundMutation.mutate()}
-                disabled={nextRoundMutation.isPending}
-                style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
-              >
-                {nextRoundMutation.isPending ? 'Generando...' : 'Generar Siguiente Ronda'}
-              </button>
+            <div className="actions-bar" style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+              {matchData?.matches?.length < Math.ceil(((standings?.length || 0) * (tournamentData?.matches_per_player || 3)) / 4) ? (
+                <button
+                  className="btn-primary"
+                  onClick={() => nextRoundMutation.mutate()}
+                  disabled={nextRoundMutation.isPending}
+                  style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
+                >
+                  {nextRoundMutation.isPending ? 'Generando...' : 'Generar Siguiente Ronda'}
+                </button>
+              ) : (
+                <p className="completion-message" style={{ color: '#10b981', fontWeight: '600', fontSize: '1.1rem', textAlign: 'center' }}>
+                  Se han completado todos los partidos del Americano
+                </p>
+              )}
             </div>
 
             {matchesLoading ? <div className="loading">Cargando partidos...</div> : (
@@ -211,7 +204,11 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                             <div className="match-main">
                               <div className="team-row">
                                 <div className="team-info">
-                                  {team1.map((p: any) => <div key={p.player_id} className="player-name">{p.name}</div>)}
+                                  {team1.map((p: any) => (
+                                    <div key={p.player_id} className={`player-name ${p.is_filler ? 'filler' : ''}`}>
+                                      {p.name} {p.is_filler === 1 && <span className="filler-tag">(C)</span>}
+                                    </div>
+                                  ))}
                                 </div>
                                 <input
                                   type="number"
@@ -219,6 +216,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                   placeholder="0"
                                   value={scores[`${match.id}_1`] !== undefined ? scores[`${match.id}_1`] : dbScore1}
                                   onChange={(e) => handleScoreChange(match.id, 1, e.target.value)}
+                                  onBlur={() => handleSaveScore(match.id)}
                                   onFocus={(e) => e.target.select()}
                                   onKeyDown={(e) => e.key === 'Enter' && handleSaveScore(match.id)}
                                 />
@@ -238,7 +236,11 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
 
                               <div className="team-row">
                                 <div className="team-info">
-                                  {team2.map((p: any) => <div key={p.player_id} className="player-name">{p.name}</div>)}
+                                  {team2.map((p: any) => (
+                                    <div key={p.player_id} className={`player-name ${p.is_filler ? 'filler' : ''}`}>
+                                      {p.name} {p.is_filler === 1 && <span className="filler-tag">(C)</span>}
+                                    </div>
+                                  ))}
                                 </div>
                                 <input
                                   type="number"
@@ -246,6 +248,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                   placeholder="0"
                                   value={scores[`${match.id}_2`] !== undefined ? scores[`${match.id}_2`] : dbScore2}
                                   onChange={(e) => handleScoreChange(match.id, 2, e.target.value)}
+                                  onBlur={() => handleSaveScore(match.id)}
                                   onFocus={(e) => e.target.select()}
                                   onKeyDown={(e) => e.key === 'Enter' && handleSaveScore(match.id)}
                                 />
@@ -256,6 +259,16 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                               <button className="save-match-btn" onClick={() => handleSaveScore(match.id)}>
                                 Guardar
                               </button>
+                              {dbScore1 === 0 && dbScore2 === 0 && (
+                                <button
+                                  className="individual-shuffle-btn"
+                                  onClick={() => shuffleMatchMutation.mutate(match.id)}
+                                  disabled={shuffleMatchMutation.isPending}
+                                  title="Revolver jugadores de este partido"
+                                >
+                                  <RefreshCcw size={14} className={shuffleMatchMutation.isPending ? 'spin' : ''} />
+                                </button>
+                              )}
                             </div>
                           </div>
                         );

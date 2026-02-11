@@ -331,6 +331,19 @@
   white-space: nowrap;
 }
 
+.team-info .player-name.filler {
+  color: #64748b;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.filler-tag {
+  color: #fbbf24;
+  font-size: 0.7rem;
+  font-weight: 800;
+  margin-left: 4px;
+}
+
 .team-info .player-name:not(:last-child) {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -398,25 +411,57 @@
 .match-footer {
   display: flex;
   justify-content: center;
-  margin-top: 0.5rem;
+  align-items: center;
+  margin-top: 1rem;
+  position: relative;
+  min-height: 40px;
 }
 
 .save-match-btn {
-  background: #93c5fd;
-  color: #0f172a;
+  background: #3b82f6;
+  color: #fff;
   border: none;
-  padding: 0.5rem 2rem;
+  padding: 0.5rem 2.5rem;
   border-radius: 100px;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.2s;
-  width: 100%;
-  /* Full width on mobile */
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  width: fit-content;
 }
 
 .save-match-btn:hover {
-  background: white;
+  background: #60a5fa;
+  transform: translateY(-1px);
+}
+
+.individual-shuffle-btn {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.individual-shuffle-btn:hover:not(:disabled) {
+  background: rgba(71, 85, 105, 0.8);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+
+.individual-shuffle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Ranking Table Responsive */
@@ -525,6 +570,10 @@
   .team-info .player-name {
     font-size: 1.1rem;
     padding: 8px 0;
+  }
+
+  .team-info .player-name.filler {
+    font-size: 1rem;
   }
 
   .score-box {

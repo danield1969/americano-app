@@ -71,6 +71,11 @@ export const shuffleTournament = async (id: number) => {
   return response.data;
 };
 
+export const shuffleMatch = async (id: number) => {
+  const response = await api.post(`/matches/${id}/shuffle`);
+  return response.data;
+};
+
 export const simulateTournament = async (id: number) => {
   const response = await api.post(`/tournaments/${id}/simulate`);
   return response.data;

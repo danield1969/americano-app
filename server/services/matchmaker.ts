@@ -218,3 +218,124 @@ export const generateTournamentPlan = async (tournamentId: number, matchesPerPla
     connection.release();
   }
 };
+export const shuffleSingleMatch = async (matchId: number) => {
+  const connection = await pool.getConnection();
+  try {
+    // 0. Check for scores
+    const [scoreRows] = await connection.query('SELECT score_obtained FROM match_players WHERE match_id = ? AND score_obtained > 0', [matchId]);
+    if ((scoreRows as any[]).length > 0) {
+      throw new Error("No se puede revolver un partido que ya tiene resultados.");
+    }
+
+    // 1. Get current players and match context
+    const [mRows] = await connection.query('SELECT tournament_id, round_number FROM matches WHERE id = ?', [matchId]);
+    if ((mRows as any[]).length === 0) throw new Error("Partido no encontrado");
+    const { tournament_id: tournamentId, round_number: roundNumber } = (mRows as any)[0];
+
+    const [tRows] = await connection.query('SELECT matches_per_player FROM tournaments WHERE id = ?', [tournamentId]);
+    const matchesPerPlayer = (tRows as any)[0].matches_per_player;
+
+    const [mpRows] = await connection.query('SELECT player_id FROM match_players WHERE match_id = ?', [matchId]);
+    const currentInMatch = (mpRows as any[]).map(row => row.player_id);
+
+    // 2. Find "Resting" players for this specific round
+    // These are players in the tournament who are NOT playing in ANY match of this round
+    const [restingRows] = await connection.query(`
+      SELECT tp.player_id 
+      FROM tournament_players tp
+      WHERE tp.tournament_id = ? 
+      AND tp.player_id NOT IN (
+        SELECT mp.player_id FROM match_players mp 
+        JOIN matches m ON mp.match_id = m.id
+        WHERE m.tournament_id = ? AND m.round_number = ?
+      )
+    `, [tournamentId, tournamentId, roundNumber]);
+
+    const restingPlayers = (restingRows as any[]).map(row => row.player_id);
+
+    // 3. Pool of available players: Current 4 + Anyone resting
+    const poolIds = [...currentInMatch, ...restingPlayers];
+
+    // We need at least 4. We should have exactly 4 if nobody is resting, or more if people are resting.
+    if (poolIds.length < 4) throw new Error("No hay suficientes jugadores disponibles.");
+
+    // 4. Randomized Selection from the pool (to "change" the 4 players)
+    // We shuffle the pool and take 4.
+    const shuffledPool = poolIds.sort(() => Math.random() - 0.5);
+    const selectedIds = shuffledPool.slice(0, 4);
+
+    // 5. Get freshness and history for selected players to optimize teams
+    const [statsRows] = await connection.query(`
+      SELECT tp.player_id, 
+             (SELECT COUNT(*) FROM match_players mp 
+              JOIN matches m ON mp.match_id = m.id 
+              WHERE mp.player_id = tp.player_id AND m.tournament_id = ?) as games_played
+      FROM tournament_players tp
+      WHERE tp.player_id IN (?) AND tp.tournament_id = ?
+    `, [tournamentId, selectedIds, tournamentId]);
+
+    const stats = (statsRows as any[]).map(row => ({
+      id: row.player_id,
+      gamesPlayed: row.games_played,
+      partners: new Set<number>()
+    }));
+
+    const [historyRows] = await connection.query(`
+      SELECT mp.player_id, mp.partner_id
+      FROM match_players mp
+      JOIN matches m ON mp.match_id = m.id
+      WHERE m.tournament_id = ? AND mp.player_id IN (?)
+    `, [tournamentId, selectedIds]);
+
+    (historyRows as any[]).forEach(row => {
+      const p = stats.find(x => x.id === row.player_id);
+      if (p && row.partner_id) p.partners.add(row.partner_id);
+    });
+
+    // 6. Trial combinations for the 4 players
+    const combinations = [
+      { t1: [stats[0], stats[1]], t2: [stats[2], stats[3]] },
+      { t1: [stats[0], stats[2]], t2: [stats[1], stats[3]] },
+      { t1: [stats[0], stats[3]], t2: [stats[1], stats[2]] }
+    ];
+
+    let bestCombo = combinations[0];
+    let minPenalty = Infinity;
+
+    for (const combo of combinations) {
+      if (!combo.t1[0] || !combo.t1[1] || !combo.t2[0] || !combo.t2[1]) continue;
+      let penalty = (combo.t1[0].partners.has(combo.t1[1].id) ? 1000 : 0) +
+        (combo.t2[0].partners.has(combo.t2[1].id) ? 1000 : 0);
+
+      if (penalty < minPenalty || (penalty === minPenalty && Math.random() > 0.5)) {
+        minPenalty = penalty;
+        bestCombo = combo;
+      }
+    }
+
+    // 7. Atomic Swap in DB
+    await connection.beginTransaction();
+    await connection.query('DELETE FROM match_players WHERE match_id = ?', [matchId]);
+
+    const insertP = async (p: any, partnerId: number, otId: number) => {
+      const isFiller = p.gamesPlayed >= matchesPerPlayer;
+      await connection.query(
+        'INSERT INTO match_players (match_id, player_id, partner_id, opponent_team_id, is_filler) VALUES (?, ?, ?, ?, ?)',
+        [matchId, p.id, partnerId, otId, isFiller]
+      );
+    };
+
+    await insertP(bestCombo.t1[0], bestCombo.t1[1].id, 1);
+    await insertP(bestCombo.t1[1], bestCombo.t1[0].id, 1);
+    await insertP(bestCombo.t2[0], bestCombo.t2[1].id, 2);
+    await insertP(bestCombo.t2[1], bestCombo.t2[0].id, 2);
+
+    await connection.commit();
+    return true;
+  } catch (err) {
+    if (connection) await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
+};

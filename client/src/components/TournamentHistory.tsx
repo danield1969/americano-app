@@ -67,12 +67,14 @@ export default function TournamentHistory({ onSelectTournament, onTournamentDele
               </span>
               <div className="t-meta">
                 <span className="t-courts">{t.courts_available} canchas</span>
-                <span className="t-matches">{t.completed_matches || 0} / {t.total_matches || 0} partidos</span>
+                <span className="t-matches">
+                  {t.completed_matches || 0} / {Math.ceil(((t.player_count || 0) * (t.matches_per_player || 3)) / 4)} partidos
+                </span>
               </div>
             </div>
 
             <div className="t-status">
-              {t.completed_matches > 0 && t.completed_matches === t.total_matches ? (
+              {(t.completed_matches || 0) >= Math.ceil(((t.player_count || 0) * (t.matches_per_player || 3)) / 4) ? (
                 <span className="status-badge completed">
                   <CheckCircle size={14} /> Finalizado
                 </span>

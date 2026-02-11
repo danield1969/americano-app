@@ -50,10 +50,11 @@ router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT t.*, 
-        (SELECT COUNT(*) FROM matches m WHERE m.tournament_id = t.id) as total_matches,
+        (SELECT COUNT(*) FROM matches m WHERE m.tournament_id = t.id) as generated_matches,
         (SELECT COUNT(DISTINCT m.id) FROM matches m 
          JOIN match_players mp ON m.id = mp.match_id 
-         WHERE m.tournament_id = t.id AND mp.score_obtained > 0) as completed_matches
+         WHERE m.tournament_id = t.id AND mp.score_obtained > 0) as completed_matches,
+        (SELECT COUNT(*) FROM tournament_players tp WHERE tp.tournament_id = t.id) as player_count
       FROM tournaments t 
       ORDER BY t.created_at DESC
     `);
@@ -200,27 +201,14 @@ router.get('/:id/standings', async (req, res) => {
   }
 });
 
-// Shuffle Tournament (Regenerate Plan)
+// Shuffle Tournament (Regenerate ONLY unplayed matches)
 router.post('/:id/shuffle', async (req, res) => {
   const { id } = req.params;
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
 
-    // 1. Check if any matches have scores
-    const [stats] = await connection.query(`
-      SELECT COUNT(*) as completed
-      FROM match_players mp
-      JOIN matches m ON mp.match_id = m.id
-      WHERE m.tournament_id = ? AND mp.score_obtained > 0
-    `, [id]);
-
-    if ((stats as any)[0].completed > 0) {
-      await connection.rollback();
-      return res.status(400).json({ error: 'No se puede revolver partidos porque ya hay resultados ingresados.' });
-    }
-
-    // 2. Get tournament info (matches_per_player)
+    // 1. Get tournament info
     const [tRows] = await connection.query('SELECT matches_per_player FROM tournaments WHERE id = ?', [id]);
     if ((tRows as any[]).length === 0) {
       await connection.rollback();
@@ -228,19 +216,34 @@ router.post('/:id/shuffle', async (req, res) => {
     }
     const matchesPerPlayer = (tRows as any)[0].matches_per_player;
 
-    // 3. Delete current matches and players
-    await connection.query(`
-      DELETE FROM match_players 
-      WHERE match_id IN (SELECT id FROM matches WHERE tournament_id = ?)
+    // 2. Find matches WITHOUT any scores recorded
+    const [unplayedMatches] = await connection.query(`
+      SELECT id FROM matches 
+      WHERE tournament_id = ? 
+      AND id NOT IN (
+        SELECT match_id FROM match_players WHERE score_obtained > 0
+      )
     `, [id]);
-    await connection.query('DELETE FROM matches WHERE tournament_id = ?', [id]);
+
+    const unplayedIds = (unplayedMatches as any[]).map(m => m.id);
+
+    if (unplayedIds.length > 0) {
+      // 3. Delete unplayed matches and their player entries
+      await connection.query('DELETE FROM match_players WHERE match_id IN (?)', [unplayedIds]);
+      await connection.query('DELETE FROM matches WHERE id IN (?)', [unplayedIds]);
+    }
 
     await connection.commit();
 
-    // 4. Regenerate plan
+    // 4. Regenerate plan for the missing games
+    // This will generate as many rounds as needed to reach matchesPerPlayer
+    // But since the user wants round-by-round generation, we should probably
+    // only regenerate the "next round" or the "plan" depending on preference.
+    // The user said "revolver las partidas generadas y que no tengan ningún score anotado".
+    // If they were already generated, we recreate them.
     await generateTournamentPlan(parseInt(id), matchesPerPlayer);
 
-    res.json({ message: 'Partidos revueltos correctamente' });
+    res.json({ message: 'Partidos unplayed revueltos correctamente' });
   } catch (error: any) {
     if (connection) await connection.rollback();
     console.error('Shuffle Error:', error);
@@ -251,30 +254,35 @@ router.post('/:id/shuffle', async (req, res) => {
 });
 
 
-// Simulate Tournament (Fill all matches with scores)
+// Simulate Tournament (Generate all matches and fill with scores)
 router.post('/:id/simulate', async (req, res) => {
   const { id } = req.params;
   const connection = await pool.getConnection();
   try {
+    // 1. First, make sure all rounds are generated
+    const [tRows] = await connection.query('SELECT matches_per_player FROM tournaments WHERE id = ?', [id]);
+    if ((tRows as any[]).length === 0) throw new Error('Tournament not found');
+    const matchesPerPlayer = (tRows as any)[0].matches_per_player;
+
+    // Generate all remaining matches
+    await generateTournamentPlan(parseInt(id), matchesPerPlayer);
+
     await connection.beginTransaction();
 
-    // 1. Get all matches for this tournament
+    // 2. Get all matches (including newly generated)
     const [matches] = await connection.query('SELECT id FROM matches WHERE tournament_id = ?', [id]);
 
     for (const match of (matches as any[])) {
-      // Check if match already has scores
       const [scores] = await connection.query('SELECT score_obtained FROM match_players WHERE match_id = ? AND score_obtained > 0', [match.id]);
       if ((scores as any[]).length === 0) {
-        // Generate random scores (sum must be 16)
-        const s1 = Math.floor(Math.random() * 17); // 0 to 16 inclusive
+        const s1 = Math.floor(Math.random() * 17);
         const s2 = 16 - s1;
-
         await connection.query('UPDATE match_players SET score_obtained = ? WHERE match_id = ? AND opponent_team_id = 1', [s1, match.id]);
         await connection.query('UPDATE match_players SET score_obtained = ? WHERE match_id = ? AND opponent_team_id = 2', [s2, match.id]);
       }
     }
 
-    // 2. Recalculate all standings for this tournament
+    // 3. Recalculate all standings
     const [players] = await connection.query('SELECT player_id FROM tournament_players WHERE tournament_id = ?', [id]);
     for (const p of (players as any[])) {
       const [sumRow] = (await connection.query(`
@@ -289,7 +297,7 @@ router.post('/:id/simulate', async (req, res) => {
     }
 
     await connection.commit();
-    res.json({ message: 'Resultados simulados con éxito' });
+    res.json({ message: 'Todos los partidos generados y simulados con éxito' });
   } catch (error: any) {
     if (connection) await connection.rollback();
     console.error('Simulate Error:', error);

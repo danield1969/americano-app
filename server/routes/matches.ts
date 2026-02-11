@@ -1,7 +1,20 @@
 import { Router } from 'express';
 import pool from '../config/database';
+import { shuffleSingleMatch } from '../services/matchmaker';
 
 const router = Router();
+
+// Shuffle Match
+router.post('/:id/shuffle', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await shuffleSingleMatch(parseInt(id));
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message || 'Error al revolver el partido' });
+  }
+});
 
 // Submit Score
 router.post('/:id/score', async (req, res) => {
