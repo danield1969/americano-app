@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trophy, Activity, Edit2, Check, RefreshCcw, MapPin } from 'lucide-react';
 import './TournamentView.css';
-import { getTournamentMatches, getTournamentStandings, submitMatchScore, shuffleTournament, getTournament, simulateTournament } from '../api';
+import { getTournamentMatches, getTournamentStandings, submitMatchScore, shuffleTournament, getTournament, simulateTournament, generateNextRound } from '../api';
 
 interface TournamentViewProps {
   tournamentId: number;
@@ -66,6 +66,15 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
     onError: (err: any) => alert(err.response?.data?.error || 'Error al simular resultados')
   });
 
+  const nextRoundMutation = useMutation({
+    mutationFn: () => generateNextRound(tournamentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] });
+      alert('Siguiente ronda generada con éxito');
+    },
+    onError: (err: any) => alert(err.response?.data?.error || 'Error al generar ronda')
+  });
+
 
   const handleScoreChange = (matchId: number, team: 1 | 2, val: string) => {
     setScores(prev => ({ ...prev, [`${matchId}_${team}`]: val }));
@@ -92,28 +101,13 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
     return acc;
   }, {}) || {};
 
-  const rounds = Object.keys(matchesByRound).sort((a, b) => Number(a) - Number(b)); // Ascending
+  const rounds = Object.keys(matchesByRound).sort((a, b) => Number(b) - Number(a)); // Descending (newest first)
 
   const getPlayersForMatch = (matchId: number) => {
     return matchData?.players?.filter((p: any) => p.match_id === matchId) || [];
   };
 
   const handleBackWithCheck = () => {
-    const round1Matches = matchData?.matches?.filter((m: any) => m.round_number === 1) || [];
-
-    if (round1Matches.length > 0) {
-      // Consider a match finished if at least one team has points > 0
-      const completedCount = round1Matches.filter((m: any) => {
-        const p = matchData?.players?.filter((pp: any) => pp.match_id === m.id) || [];
-        return p.some((pp: any) => pp.score_obtained > 0);
-      }).length;
-
-      if (completedCount === round1Matches.length) {
-        alert("No se puede agregar nuevo jugador ya que todos los participantes inscritos jugaron su primer partido");
-        return;
-      }
-    }
-
     onEdit();
   };
 
@@ -125,8 +119,15 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
             <h2 className="glow-text">Torneo en Curso #{tournamentId}</h2>
             <div className="header-subtitle">
               {tournamentData?.location && <span className="info-item"><MapPin size={14} /> {tournamentData.location}</span>}
-              <span className="info-item">Partidos: {tournamentData?.matches_per_player || 0}</span>
               <span className="info-item">Jugadores: {standings?.length || 0}</span>
+              <span className="info-item">Partidos/Jugador: {tournamentData?.matches_per_player || 3}</span>
+            </div>
+            <div className="header-subtitle stats-row">
+              <span className="info-item highlight">Partidos Totales: {Math.ceil(((standings?.length || 0) * (tournamentData?.matches_per_player || 3)) / 4)}</span>
+              <span className="info-item highlight">Partidos Terminados: {matchData?.matches?.filter((m: any) => {
+                const p = matchData?.players?.filter((pp: any) => pp.match_id === m.id) || [];
+                return p.some((pp: any) => pp.score_obtained > 0);
+              }).length || 0}</span>
             </div>
             {!hasAnyScores && !matchesLoading && matchData?.matches?.length > 0 && (
               <div className="header-actions">
@@ -175,8 +176,15 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
       <div className="view-content">
         {activeTab === 'matches' && (
           <div className="matches-section">
-            <div className="actions-bar">
-              {/* Generación manual eliminada para despliegue automático inicial */}
+            <div className="actions-bar" style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+              <button
+                className="btn-primary"
+                onClick={() => nextRoundMutation.mutate()}
+                disabled={nextRoundMutation.isPending}
+                style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
+              >
+                {nextRoundMutation.isPending ? 'Generando...' : 'Generar Siguiente Ronda'}
+              </button>
             </div>
 
             {matchesLoading ? <div className="loading">Cargando partidos...</div> : (

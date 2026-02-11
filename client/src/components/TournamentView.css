@@ -234,6 +234,18 @@
   margin-bottom: 0.5rem;
 }
 
+.stats-row {
+  margin-top: 0.25rem;
+}
+
+.highlight {
+  color: #38bdf8;
+  font-weight: 600;
+  background: rgba(56, 189, 248, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
 .info-item {
   display: flex;
   align-items: center;

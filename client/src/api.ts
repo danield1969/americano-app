@@ -61,6 +61,11 @@ export const getTournamentStandings = async (id: number) => {
   return response.data;
 };
 
+export const generateNextRound = async (id: number) => {
+  const response = await api.post(`/tournaments/${id}/next-round`);
+  return response.data;
+};
+
 export const shuffleTournament = async (id: number) => {
   const response = await api.post(`/tournaments/${id}/shuffle`);
   return response.data;

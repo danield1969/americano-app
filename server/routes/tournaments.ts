@@ -32,8 +32,8 @@ router.post('/', async (req, res) => {
 
     await connection.commit();
 
-    // 3. Generate all matches automatically
-    await generateTournamentPlan(tournamentId, matchesPerPlayer || 3);
+    // 3. Generate only the first round automatically
+    await generateRound(tournamentId);
 
     res.status(201).json({ id: tournamentId, message: 'Tournament started and all matches generated' });
   } catch (error) {
@@ -111,22 +111,6 @@ router.put('/:id/players', async (req, res) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-
-    // Check if first round is completed (all matches in round 1 have scores)
-    const [stats] = await connection.query(`
-      SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN id IN (SELECT match_id FROM match_players WHERE score_obtained > 0) THEN 1 ELSE 0 END) as completed
-      FROM matches 
-      WHERE tournament_id = ? AND round_number = 1
-    `, [id]);
-
-    const { total, completed } = (stats as any)[0];
-
-    if (total > 0 && total === (completed || 0)) {
-      await connection.rollback();
-      return res.status(400).json({ error: 'No se puede agregar nuevo jugador ya que todos los participantes inscritos jugaron su primer partido' });
-    }
 
     // 1. Update basic tournament info
     await connection.query(
@@ -312,6 +296,18 @@ router.post('/:id/simulate', async (req, res) => {
     res.status(500).json({ error: 'Error al simular: ' + error.message });
   } finally {
     connection.release();
+  }
+});
+
+// Generate Next Round
+router.post('/:id/next-round', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const matches = await generateRound(parseInt(id));
+    res.json({ message: 'Siguiente ronda generada', matches });
+  } catch (error: any) {
+    console.error('Next Round Error:', error);
+    res.status(500).json({ error: 'Error al generar ronda: ' + error.message });
   }
 });
 
