@@ -20,14 +20,18 @@ export const generateRound = async (tournamentId: number) => {
       SELECT tp.player_id, 
              (SELECT COUNT(*) FROM match_players mp 
               JOIN matches m ON mp.match_id = m.id 
-              WHERE mp.player_id = tp.player_id AND m.tournament_id = ?) as games_played
+              WHERE mp.player_id = tp.player_id AND m.tournament_id = ?) as games_played,
+             (SELECT MAX(m.round_number) FROM match_players mp 
+              JOIN matches m ON mp.match_id = m.id 
+              WHERE mp.player_id = tp.player_id AND m.tournament_id = ?) as last_round
       FROM tournament_players tp
       WHERE tp.tournament_id = ?
-    `, [tournamentId, tournamentId]);
+    `, [tournamentId, tournamentId, tournamentId]);
 
     const players = (tpRows as any[]).map(row => ({
       id: row.player_id,
       gamesPlayed: row.games_played,
+      lastRound: row.last_round || 0, // 0 means haven't played yet
       partners: new Set<number>(),
       opponents: new Set<number>()
     }));
@@ -47,10 +51,23 @@ export const generateRound = async (tournamentId: number) => {
       if (p && row.partner_id) p.partners.add(row.partner_id);
     });
 
+    // Find next round number to know the context
+    const [rRows] = await connection.query('SELECT MAX(round_number) as max_r FROM matches WHERE tournament_id = ?', [tournamentId]);
+    const nextRound = ((rRows as any)[0].max_r || 0) + 1;
+
     // 4. Select Players for this Round (Fairness Rotation)
-    // Sort by gamesPlayed ASC. Randomize ties to avoid same people always waiting.
+    // Criteria:
+    // 1. Fewer games played
+    // 2. Longer time since last match (lastRound)
+    // 3. Randomize ties
     players.sort((a, b) => {
+      // Priority 1: Fewer games
       if (a.gamesPlayed !== b.gamesPlayed) return a.gamesPlayed - b.gamesPlayed;
+
+      // Priority 2: Waited longer (smaller lastRound value)
+      if (a.lastRound !== b.lastRound) return a.lastRound - b.lastRound;
+
+      // Priority 3: Random
       return Math.random() - 0.5;
     });
 
@@ -112,10 +129,6 @@ export const generateRound = async (tournamentId: number) => {
     if (!bestMatches || bestMatches.length === 0) throw new Error("Could not generate matches");
 
     await connection.beginTransaction();
-
-    // Find next round number
-    const [rRows] = await connection.query('SELECT MAX(round_number) as max_r FROM matches WHERE tournament_id = ?', [tournamentId]);
-    const nextRound = ((rRows as any)[0].max_r || 0) + 1;
 
     const savedMatches = [];
 
