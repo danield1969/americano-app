@@ -281,9 +281,9 @@ router.post('/:id/simulate', async (req, res) => {
       // Check if match already has scores
       const [scores] = await connection.query('SELECT score_obtained FROM match_players WHERE match_id = ? AND score_obtained > 0', [match.id]);
       if ((scores as any[]).length === 0) {
-        // Generate random scores
-        const s1 = Math.floor(Math.random() * 11);
-        const s2 = Math.floor(Math.random() * 11);
+        // Generate random scores (sum must be 16)
+        const s1 = Math.floor(Math.random() * 17); // 0 to 16 inclusive
+        const s2 = 16 - s1;
 
         await connection.query('UPDATE match_players SET score_obtained = ? WHERE match_id = ? AND opponent_team_id = 1', [s1, match.id]);
         await connection.query('UPDATE match_players SET score_obtained = ? WHERE match_id = ? AND opponent_team_id = 2', [s2, match.id]);
