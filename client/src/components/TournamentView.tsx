@@ -92,7 +92,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
     return acc;
   }, {}) || {};
 
-  const rounds = Object.keys(matchesByRound).sort((a, b) => Number(b) - Number(a)); // Descending
+  const rounds = Object.keys(matchesByRound).sort((a, b) => Number(a) - Number(b)); // Ascending
 
   const getPlayersForMatch = (matchId: number) => {
     return matchData?.players?.filter((p: any) => p.match_id === matchId) || [];
