@@ -37,18 +37,34 @@ export const generateRound = async (tournamentId: number) => {
     }));
 
     // 3. Load Interaction History (Partners & Opponents during this tournament)
-    // This query is vital: Find who played with whom
     const [historyRows] = await connection.query(`
-      SELECT mp.player_id, mp.partner_id
+      SELECT mp.match_id, mp.player_id, mp.partner_id, mp.opponent_team_id
       FROM match_players mp
       JOIN matches m ON mp.match_id = m.id
       WHERE m.tournament_id = ?
     `, [tournamentId]);
 
-    // Populate Sets
+    // Grouping by match to find opponents
+    const matchesHistory = new Map<number, any[]>();
     (historyRows as any[]).forEach(row => {
+      if (!matchesHistory.has(row.match_id)) matchesHistory.set(row.match_id, []);
+      matchesHistory.get(row.match_id)!.push(row);
+
       const p = players.find(x => x.id === row.player_id);
       if (p && row.partner_id) p.partners.add(row.partner_id);
+    });
+
+    // Populate Opponents Sets
+    matchesHistory.forEach((playersInMatch) => {
+      playersInMatch.forEach(p1Row => {
+        const p1 = players.find(x => x.id === p1Row.player_id);
+        if (!p1) return;
+        playersInMatch.forEach(p2Row => {
+          if (p1Row.opponent_team_id !== p2Row.opponent_team_id) {
+            p1.opponents.add(p2Row.player_id);
+          }
+        });
+      });
     });
 
     // Find next round number to know the context
@@ -56,22 +72,12 @@ export const generateRound = async (tournamentId: number) => {
     const nextRound = ((rRows as any)[0].max_r || 0) + 1;
 
     // 4. Select Players for this Round (Fairness Rotation)
-    // Criteria:
-    // 1. Fewer games played
-    // 2. Longer time since last match (lastRound)
-    // 3. Randomize ties
     players.sort((a, b) => {
-      // Priority 1: Fewer games
       if (a.gamesPlayed !== b.gamesPlayed) return a.gamesPlayed - b.gamesPlayed;
-
-      // Priority 2: Waited longer (smaller lastRound value)
       if (a.lastRound !== b.lastRound) return a.lastRound - b.lastRound;
-
-      // Priority 3: Random
       return Math.random() - 0.5;
     });
 
-    // Smart Court Selection: Only use as many courts as needed for players who still need games
     const playersNeedingGames = players.filter(p => p.gamesPlayed < matchesPerPlayer).length;
     const neededMatches = Math.ceil(playersNeedingGames / 4);
     const actualMatchesToGenerate = Math.max(1, Math.min(courtsAvailable, neededMatches));
@@ -84,20 +90,16 @@ export const generateRound = async (tournamentId: number) => {
     }
 
     // 5. Generate Pairings (Greedy/Randomized Search)
-    // Goal: Minimize Pair Repetitions.
-    // Since N <= 16 (4 courts), we can try random shuffles and score them.
-
     let bestMatches = null;
-    let bestScore = Infinity; // Lower is better
+    let bestScore = Infinity;
 
-    for (let attempt = 0; attempt < 100; attempt++) {
+    for (let attempt = 0; attempt < 200; attempt++) { // Increased attempts for better optimization
       const shuffled = [...selectedPlayers].sort(() => Math.random() - 0.5);
       const currentMatches = [];
       let currentScore = 0;
 
-      // Group into chunks of 4
       for (let i = 0; i < shuffled.length; i += 4) {
-        if (i + 3 >= shuffled.length) break; // Should not happen if logic is correct
+        if (i + 3 >= shuffled.length) break;
 
         const p1 = shuffled[i];
         const p2 = shuffled[i + 1];
@@ -106,10 +108,16 @@ export const generateRound = async (tournamentId: number) => {
 
         if (!p1 || !p2 || !p3 || !p4) break;
 
-        // Score this match configuration
-        // Penalize if p1 & p2 have been partners
+        // Penalize repeating partners (High penalty)
         if (p1.partners.has(p2.id)) currentScore += 1000;
         if (p3.partners.has(p4.id)) currentScore += 1000;
+
+        // Penalize repeating opponents (Moderate penalty)
+        // Each pair of opponents (p1 vs p3, p1 vs p4, p2 vs p3, p2 vs p4)
+        if (p1.opponents.has(p3.id)) currentScore += 100;
+        if (p1.opponents.has(p4.id)) currentScore += 100;
+        if (p2.opponents.has(p3.id)) currentScore += 100;
+        if (p2.opponents.has(p4.id)) currentScore += 100;
 
         currentMatches.push({
           court: Math.floor(i / 4) + 1,
@@ -121,7 +129,7 @@ export const generateRound = async (tournamentId: number) => {
       if (currentScore < bestScore) {
         bestScore = currentScore;
         bestMatches = currentMatches;
-        if (currentScore === 0) break; // Perfect match found
+        if (currentScore === 0) break;
       }
     }
 
@@ -277,19 +285,36 @@ export const shuffleSingleMatch = async (matchId: number) => {
     const stats = (statsRows as any[]).map(row => ({
       id: row.player_id,
       gamesPlayed: row.games_played,
-      partners: new Set<number>()
+      partners: new Set<number>(),
+      opponents: new Set<number>()
     }));
 
     const [historyRows] = await connection.query(`
-      SELECT mp.player_id, mp.partner_id
+      SELECT mp.match_id, mp.player_id, mp.partner_id, mp.opponent_team_id
       FROM match_players mp
       JOIN matches m ON mp.match_id = m.id
       WHERE m.tournament_id = ? AND mp.player_id IN (?)
     `, [tournamentId, selectedIds]);
 
+    const mHistory = new Map<number, any[]>();
     (historyRows as any[]).forEach(row => {
+      if (!mHistory.has(row.match_id)) mHistory.set(row.match_id, []);
+      mHistory.get(row.match_id)!.push(row);
+
       const p = stats.find(x => x.id === row.player_id);
       if (p && row.partner_id) p.partners.add(row.partner_id);
+    });
+
+    mHistory.forEach((playersInMatch) => {
+      playersInMatch.forEach(p1Row => {
+        const p1 = stats.find(x => x.id === p1Row.player_id);
+        if (!p1) return;
+        playersInMatch.forEach(p2Row => {
+          if (p1Row.opponent_team_id !== p2Row.opponent_team_id) {
+            p1.opponents.add(p2Row.player_id);
+          }
+        });
+      });
     });
 
     // 6. Trial combinations for the 4 players
@@ -304,8 +329,16 @@ export const shuffleSingleMatch = async (matchId: number) => {
 
     for (const combo of combinations) {
       if (!combo.t1[0] || !combo.t1[1] || !combo.t2[0] || !combo.t2[1]) continue;
-      let penalty = (combo.t1[0].partners.has(combo.t1[1].id) ? 1000 : 0) +
-        (combo.t2[0].partners.has(combo.t2[1].id) ? 1000 : 0);
+
+      let penalty = 0;
+      if (combo.t1[0].partners.has(combo.t1[1].id)) penalty += 1000;
+      if (combo.t2[0].partners.has(combo.t2[1].id)) penalty += 1000;
+
+      // Opponent penalties
+      if (combo.t1[0].opponents.has(combo.t2[0].id)) penalty += 100;
+      if (combo.t1[0].opponents.has(combo.t2[1].id)) penalty += 100;
+      if (combo.t1[1].opponents.has(combo.t2[0].id)) penalty += 100;
+      if (combo.t1[1].opponents.has(combo.t2[1].id)) penalty += 100;
 
       if (penalty < minPenalty || (penalty === minPenalty && Math.random() > 0.5)) {
         minPenalty = penalty;
