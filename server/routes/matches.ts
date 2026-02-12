@@ -136,4 +136,52 @@ router.put('/:id/players', async (req, res) => {
   }
 });
 
+// Delete Match
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // 1. Get match info (tournament and players) before deleting
+    const [mRow] = (await connection.query('SELECT tournament_id FROM matches WHERE id = ?', [id])) as any;
+    if (mRow.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'Match not found' });
+    }
+    const tournamentId = mRow[0].tournament_id;
+
+    const [players] = await connection.query('SELECT player_id FROM match_players WHERE match_id = ?', [id]);
+
+    // 2. Delete match players first (if no cascade) and then the match
+    await connection.query('DELETE FROM match_players WHERE match_id = ?', [id]);
+    await connection.query('DELETE FROM matches WHERE id = ?', [id]);
+
+    // 3. Recalculate standings for the affected players
+    for (const p of (players as any[])) {
+      const [sumRow] = (await connection.query(`
+            SELECT SUM(mp.score_obtained) as total 
+            FROM match_players mp 
+            JOIN matches m ON mp.match_id = m.id 
+            WHERE mp.player_id = ? AND m.tournament_id = ? AND mp.is_filler = 0
+        `, [p.player_id, tournamentId])) as any;
+
+      const newTotal = sumRow[0].total || 0;
+      await connection.query(
+        'UPDATE tournament_players SET current_score = ? WHERE player_id = ? AND tournament_id = ?',
+        [newTotal, p.player_id, tournamentId]
+      );
+    }
+
+    await connection.commit();
+    res.json({ success: true });
+  } catch (error) {
+    await connection.rollback();
+    console.error(error);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    connection.release();
+  }
+});
+
 export default router;

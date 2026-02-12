@@ -320,7 +320,7 @@
 }
 
 .team-info .player-name {
-  font-weight: 600;
+  font-weight: 400;
   font-size: 0.85rem;
   color: #f8fafc;
   padding: 3px 0;
@@ -436,6 +436,34 @@
   transform: translateY(-1px);
 }
 
+.delete-match-btn {
+  position: absolute;
+  left: -5px;
+  bottom: -5px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-match-btn:hover:not(:disabled) {
+  background: rgba(71, 85, 105, 0.8);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+
+.delete-match-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .individual-shuffle-btn {
   position: absolute;
   right: -5px;
@@ -512,8 +540,8 @@
 
   .ranking-table th,
   .ranking-table td {
-    padding: 0.5rem 0.25rem;
-    font-size: 0.75rem;
+    padding: 0.6rem 0.4rem;
+    font-size: 0.85rem;
   }
 
   /* Specific column widths for mobile */
@@ -568,8 +596,8 @@
   }
 
   .team-info .player-name {
-    font-size: 1.1rem;
-    padding: 8px 0;
+    font-size: 0.95rem;
+    padding: 6px 0;
   }
 
   .team-info .player-name.filler {
@@ -612,7 +640,7 @@
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 400;
   cursor: pointer;
   transition: all 0.2s;
   margin: 2px 0;

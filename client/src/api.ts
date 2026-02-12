@@ -91,6 +91,11 @@ export const updateMatchPlayer = async (matchId: number, oldPlayerId: number, ne
   return response.data;
 };
 
+export const deleteMatch = async (id: number) => {
+  const response = await api.delete(`/matches/${id}`);
+  return response.data;
+};
+
 export const getGlobalStats = async () => {
   const response = await api.get('/players/stats/global');
   return response.data;

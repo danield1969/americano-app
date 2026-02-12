@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trophy, Activity, Edit2, Check, RefreshCcw, MapPin } from 'lucide-react';
+import { Trophy, Activity, Edit2, Check, RefreshCcw, MapPin, Trash2 } from 'lucide-react';
 import './TournamentView.css';
-import { getTournamentMatches, getTournamentStandings, submitMatchScore, getTournament, simulateTournament, generateNextRound, shuffleMatch, updateMatchPlayer } from '../api';
+import { getTournamentMatches, getTournamentStandings, submitMatchScore, getTournament, simulateTournament, generateNextRound, shuffleMatch, updateMatchPlayer, deleteMatch } from '../api';
 
 interface TournamentViewProps {
   tournamentId: number;
@@ -80,6 +80,15 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
       queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] });
     },
     onError: (err: any) => alert(err.response?.data?.error || 'Error al generar ronda')
+  });
+
+  const deleteMatchMutation = useMutation({
+    mutationFn: (matchId: number) => deleteMatch(matchId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] });
+      queryClient.invalidateQueries({ queryKey: ['standings', tournamentId] });
+    },
+    onError: (err: any) => alert(err.response?.data?.error || 'Error al eliminar el partido')
   });
 
 
@@ -307,6 +316,18 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                             </div>
 
                             <div className="match-footer">
+                              <button
+                                className="delete-match-btn"
+                                onClick={() => {
+                                  if (confirm('¿Estás seguro de que deseas eliminar este partido? Los puntos asociados se perderán.')) {
+                                    deleteMatchMutation.mutate(match.id);
+                                  }
+                                }}
+                                disabled={deleteMatchMutation.isPending}
+                                title="Eliminar este partido"
+                              >
+                                <Trash2 size={16} />
+                              </button>
                               <button className="save-match-btn" onClick={() => handleSaveScore(match.id)}>
                                 Guardar
                               </button>
