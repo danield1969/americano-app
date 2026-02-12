@@ -89,11 +89,12 @@ export const generateRound = async (tournamentId: number) => {
       throw new Error("No hay suficientes jugadores para formar un partido");
     }
 
-    // 5. Generate Pairings (Greedy/Randomized Search)
+    // 5. Generate Pairings (Heavy Randomized Search)
     let bestMatches = null;
     let bestScore = Infinity;
 
-    for (let attempt = 0; attempt < 200; attempt++) { // Increased attempts for better optimization
+    // Use a higher number of attempts to find the best possible arrangement
+    for (let attempt = 0; attempt < 2000; attempt++) {
       const shuffled = [...selectedPlayers].sort(() => Math.random() - 0.5);
       const currentMatches = [];
       let currentScore = 0;
@@ -108,16 +109,16 @@ export const generateRound = async (tournamentId: number) => {
 
         if (!p1 || !p2 || !p3 || !p4) break;
 
-        // Penalize repeating partners (High penalty)
-        if (p1.partners.has(p2.id)) currentScore += 1000;
-        if (p3.partners.has(p4.id)) currentScore += 1000;
+        // Penalize repeating partners (Very High penalty)
+        if (p1.partners.has(p2.id)) currentScore += 5000;
+        if (p3.partners.has(p4.id)) currentScore += 5000;
 
-        // Penalize repeating opponents (Moderate penalty)
-        // Each pair of opponents (p1 vs p3, p1 vs p4, p2 vs p3, p2 vs p4)
-        if (p1.opponents.has(p3.id)) currentScore += 100;
-        if (p1.opponents.has(p4.id)) currentScore += 100;
-        if (p2.opponents.has(p3.id)) currentScore += 100;
-        if (p2.opponents.has(p4.id)) currentScore += 100;
+        // Penalize repeating opponents (High penalty)
+        // Check all 4 VS combinations
+        if (p1.opponents.has(p3.id)) currentScore += 1000;
+        if (p1.opponents.has(p4.id)) currentScore += 1000;
+        if (p2.opponents.has(p3.id)) currentScore += 1000;
+        if (p2.opponents.has(p4.id)) currentScore += 1000;
 
         currentMatches.push({
           court: Math.floor(i / 4) + 1,
@@ -129,7 +130,7 @@ export const generateRound = async (tournamentId: number) => {
       if (currentScore < bestScore) {
         bestScore = currentScore;
         bestMatches = currentMatches;
-        if (currentScore === 0) break;
+        if (currentScore === 0) break; // Perfect round found!
       }
     }
 
@@ -331,14 +332,14 @@ export const shuffleSingleMatch = async (matchId: number) => {
       if (!combo.t1[0] || !combo.t1[1] || !combo.t2[0] || !combo.t2[1]) continue;
 
       let penalty = 0;
-      if (combo.t1[0].partners.has(combo.t1[1].id)) penalty += 1000;
-      if (combo.t2[0].partners.has(combo.t2[1].id)) penalty += 1000;
+      if (combo.t1[0].partners.has(combo.t1[1].id)) penalty += 5000;
+      if (combo.t2[0].partners.has(combo.t2[1].id)) penalty += 5000;
 
       // Opponent penalties
-      if (combo.t1[0].opponents.has(combo.t2[0].id)) penalty += 100;
-      if (combo.t1[0].opponents.has(combo.t2[1].id)) penalty += 100;
-      if (combo.t1[1].opponents.has(combo.t2[0].id)) penalty += 100;
-      if (combo.t1[1].opponents.has(combo.t2[1].id)) penalty += 100;
+      if (combo.t1[0].opponents.has(combo.t2[0].id)) penalty += 1000;
+      if (combo.t1[0].opponents.has(combo.t2[1].id)) penalty += 1000;
+      if (combo.t1[1].opponents.has(combo.t2[0].id)) penalty += 1000;
+      if (combo.t1[1].opponents.has(combo.t2[1].id)) penalty += 1000;
 
       if (penalty < minPenalty || (penalty === minPenalty && Math.random() > 0.5)) {
         minPenalty = penalty;
