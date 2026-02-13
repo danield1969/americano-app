@@ -27,7 +27,7 @@ app.use(express.static(publicPath));
 // API routes are already defined above.
 // Serve index.html for any other route (SPA support)
 // Serve index.html for any other route (SPA support)
-app.get(/(.*)/, (req, res) => {
+app.get(/(.*)/, (_req, res) => {
   res.sendFile(path.join(publicPath, 'index.html'));
 });
 

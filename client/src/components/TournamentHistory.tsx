@@ -18,7 +18,7 @@ export default function TournamentHistory({ onSelectTournament, onTournamentDele
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteTournament(id),
     onSuccess: (_, deletedId) => {
-      console.log('Jornada eliminada con éxito:', deletedId);
+
       queryClient.invalidateQueries({ queryKey: ['tournaments'] });
       queryClient.invalidateQueries({ queryKey: ['globalStats'] });
       if (onTournamentDeleted) onTournamentDeleted(deletedId);
@@ -29,13 +29,10 @@ export default function TournamentHistory({ onSelectTournament, onTournamentDele
   const handleDelete = (e: React.MouseEvent, id: number, date: string) => {
     e.stopPropagation();
     e.preventDefault();
-    console.log('Botón borrar presionado para ID:', id);
+
     const formattedDate = new Date(date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
     if (window.confirm(`¿Estás seguro de que deseas eliminar la jornada del ${formattedDate}? Esta acción borrará todos los partidos y puntos asociados de forma permanente.`)) {
-      console.log('Confirmación aceptada. Llamando a mutation...');
       deleteMutation.mutate(id);
-    } else {
-      console.log('Eliminación cancelada por el usuario');
     }
   };
 

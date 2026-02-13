@@ -1,12 +1,6 @@
 import pool from '../config/database';
 
-interface PlayerStats {
-  id: number;
-  gamesPlayed: number;
-  // History
-  partners: Set<number>;
-  opponents: Set<number>;
-}
+
 
 export const generateRound = async (tournamentId: number) => {
   const connection = await pool.getConnection();

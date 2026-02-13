@@ -78,8 +78,7 @@ export default function Home({ onNavigate }: HomeProps) {
         </button>
       </div>
 
-      <footer className="home-footer animate-fade-in">
-      </footer>
+
     </div>
   );
 }

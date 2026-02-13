@@ -33,7 +33,6 @@ router.post('/:id/score', async (req, res) => {
     const [players] = await connection.query('SELECT player_id, opponent_team_id FROM match_players WHERE match_id = ?', [id]);
 
     // 2. Update match_players score
-    const winningScore = parseInt(team1Score); // Actually specific per team
     const t1Score = parseInt(team1Score);
     const t2Score = parseInt(team2Score);
 

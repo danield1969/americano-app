@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import pool from '../config/database';
-import { RowDataPacket } from 'mysql2';
+
 
 const router = Router();
 
 // Get all players
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM players ORDER BY name ASC');
     res.json(rows);
@@ -47,7 +47,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Get Global Stats
-router.get('/stats/global', async (req, res) => {
+router.get('/stats/global', async (_req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT 

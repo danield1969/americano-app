@@ -46,7 +46,7 @@ router.post('/', async (req, res) => {
 });
 
 // List Tournaments
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT t.*, 
@@ -68,7 +68,6 @@ router.get('/', async (req, res) => {
 // Delete Tournament
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
-  console.log(`Intentando eliminar torneo con ID: ${id}`);
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -89,7 +88,6 @@ router.delete('/:id', async (req, res) => {
     await connection.query('DELETE FROM tournaments WHERE id = ?', [id]);
 
     await connection.commit();
-    console.log(`Torneo ${id} eliminado con éxito de la DB`);
     res.json({ message: 'Torneo eliminado correctamente' });
   } catch (error: any) {
     if (connection) await connection.rollback();
