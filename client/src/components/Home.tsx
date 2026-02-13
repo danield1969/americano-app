@@ -1,4 +1,4 @@
-import { Users, Calendar, History, BarChart2, ShieldCheck, Zap, Star } from 'lucide-react';
+import { Users, Calendar, History, BarChart2, Zap } from 'lucide-react';
 import './Home.css';
 
 interface HomeProps {
