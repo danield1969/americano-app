@@ -255,7 +255,6 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                   placeholder="0"
                                   value={scores[`${match.id}_1`] !== undefined ? scores[`${match.id}_1`] : dbScore1}
                                   onChange={(e) => handleScoreChange(match.id, 1, e.target.value)}
-                                  onBlur={() => handleSaveScore(match.id)}
                                   onFocus={(e) => e.target.select()}
                                   onKeyDown={(e) => e.key === 'Enter' && handleSaveScore(match.id)}
                                 />
@@ -308,7 +307,6 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                   placeholder="0"
                                   value={scores[`${match.id}_2`] !== undefined ? scores[`${match.id}_2`] : dbScore2}
                                   onChange={(e) => handleScoreChange(match.id, 2, e.target.value)}
-                                  onBlur={() => handleSaveScore(match.id)}
                                   onFocus={(e) => e.target.select()}
                                   onKeyDown={(e) => e.key === 'Enter' && handleSaveScore(match.id)}
                                 />
