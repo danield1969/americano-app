@@ -323,6 +323,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                 }}
                                 disabled={deleteMatchMutation.isPending}
                                 title="Eliminar este partido"
+                                tabIndex={-1}
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -335,6 +336,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                   onClick={() => shuffleMatchMutation.mutate(match.id)}
                                   disabled={shuffleMatchMutation.isPending}
                                   title="Revolver jugadores de este partido"
+                                  tabIndex={-1}
                                 >
                                   <RefreshCcw size={14} className={shuffleMatchMutation.isPending ? 'spin' : ''} />
                                 </button>
