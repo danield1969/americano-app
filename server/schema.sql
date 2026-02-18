@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS tournaments (
   location VARCHAR(255),
   courts_available INT NOT NULL,
   matches_per_player INT NOT NULL DEFAULT 3,
+  modality VARCHAR(50) DEFAULT '16 puntos',
   status ENUM('planned', 'in_progress', 'completed') DEFAULT 'planned',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS match_players (
   partner_id INT,
   opponent_team_id INT COMMENT 'Artificial ID (1 or 2) to group partners',
   score_obtained INT DEFAULT 0,
+  points_won INT DEFAULT 0,
   is_filler BOOLEAN DEFAULT FALSE,
   FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
   FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE,

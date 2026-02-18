@@ -67,6 +67,7 @@ export default function TournamentHistory({ onSelectTournament, onTournamentDele
                 <span className="t-matches">
                   {t.completed_matches || 0} / {Math.ceil(((t.player_count || 0) * (t.matches_per_player || 3)) / 4)} partidos
                 </span>
+                <span className="t-modality">{t.modality || '16 puntos'}</span>
               </div>
             </div>
 

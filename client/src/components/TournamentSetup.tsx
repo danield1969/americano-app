@@ -19,6 +19,7 @@ export default function TournamentSetup({
   const [location, setLocation] = useState('');
   const [courts, setCourts] = useState(2);
   const [matchesPerPlayer, setMatchesPerPlayer] = useState(3);
+  const [modality, setModality] = useState('16 puntos');
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
 
   const { data: players } = useQuery({ queryKey: ['players'], queryFn: getPlayers });
@@ -42,6 +43,7 @@ export default function TournamentSetup({
       setLocation(tournamentData.location || '');
       setCourts(tournamentData.courts_available);
       setMatchesPerPlayer(tournamentData.matches_per_player || 3);
+      setModality(tournamentData.modality || '16 puntos');
     }
   }, [tournamentData]);
 
@@ -93,6 +95,7 @@ export default function TournamentSetup({
       location,
       courtsAvailable: courts,
       matchesPerPlayer,
+      modality,
       playerIds: selectedPlayers
     });
   };
@@ -158,6 +161,18 @@ export default function TournamentSetup({
               />
             </div>
           )}
+
+          <div className="form-group">
+            <label>Modalidad</label>
+            <select
+              className="input-field"
+              value={modality}
+              onChange={e => setModality(e.target.value)}
+            >
+              <option value="16 puntos">16 puntos</option>
+              <option value="4 games">4 games</option>
+            </select>
+          </div>
         </div>
 
         <div className="players-selection">

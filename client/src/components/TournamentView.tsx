@@ -130,10 +130,27 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
     const dbS1 = players.find((p: any) => p.opponent_team_id === 1)?.score_obtained || 0;
     const dbS2 = players.find((p: any) => p.opponent_team_id === 2)?.score_obtained || 0;
 
-    const t1 = scores[`${matchId}_1`] !== undefined ? scores[`${matchId}_1`] : dbS1.toString();
-    const t2 = scores[`${matchId}_2`] !== undefined ? scores[`${matchId}_2`] : dbS2.toString();
+    const t1Str = scores[`${matchId}_1`] !== undefined ? scores[`${matchId}_1`] : dbS1.toString();
+    const t2Str = scores[`${matchId}_2`] !== undefined ? scores[`${matchId}_2`] : dbS2.toString();
 
-    scoreMutation.mutate({ id: matchId, t1: parseInt(t1 || '0'), t2: parseInt(t2 || '0') });
+    const t1 = parseInt(t1Str || '0');
+    const t2 = parseInt(t2Str || '0');
+
+    // Validation
+    if (tournamentData?.modality === '4 games') {
+      if (t1 > 4 || t2 > 4) {
+        alert('En la modalidad "4 games", el puntaje máximo individual es 4.');
+        return;
+      }
+    } else {
+      // Default: 16 puntos
+      if (t1 + t2 > 16) {
+        alert(`La suma de los puntos (${t1 + t2}) no puede superar 16 para la modalidad "16 puntos".`);
+        return;
+      }
+    }
+
+    scoreMutation.mutate({ id: matchId, t1, t2 });
   };
 
   // Helper to group matches by round
@@ -163,6 +180,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
               {tournamentData?.location && <span className="info-item"><MapPin size={14} /> {tournamentData.location}</span>}
               <span className="info-item">Jugadores: {standings?.length || 0}</span>
               <span className="info-item">Partidos/Jugador: {tournamentData?.matches_per_player || 3}</span>
+              <span className="info-item modality-badge">Modalidad: <strong>{tournamentData?.modality || '16 puntos'}</strong></span>
             </div>
             <div className="header-subtitle stats-row">
               <span className="info-item highlight">Partidos Totales: {Math.ceil(((standings?.length || 0) * (tournamentData?.matches_per_player || 3)) / 4)}</span>
@@ -220,7 +238,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
 
               {matchData?.matches?.length >= Math.ceil(((standings?.length || 0) * (tournamentData?.matches_per_player || 3)) / 4) && (
                 <p className="completion-message" style={{ color: '#10b981', fontWeight: '600', fontSize: '1.1rem', textAlign: 'center', marginTop: '5px' }}>
-                  Se han completado los partidos teóricos del Americano
+                  Se han completado todos los partidos del Americano
                 </p>
               )}
             </div>

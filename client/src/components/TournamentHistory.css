@@ -64,14 +64,16 @@
 }
 
 .t-courts,
-.t-matches {
+.t-matches,
+.t-modality {
   font-size: 0.8rem;
   color: #94a3b8;
   display: flex;
   align-items: center;
 }
 
-.t-matches::before {
+.t-matches::before,
+.t-modality::before {
   content: "•";
   margin-right: 0.5rem;
   opacity: 0.5;

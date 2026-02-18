@@ -87,13 +87,13 @@ router.get('/stats/global', async (_req, res) => {
           AND opp.player_id = (SELECT MIN(player_id) FROM match_players WHERE match_id = mp.match_id AND opponent_team_id != mp.opponent_team_id)
         ) as defeats,
         (
-          SELECT COALESCE(SUM(mp.score_obtained), 0)
+          SELECT COALESCE(SUM(mp.points_won), 0)
           FROM match_players mp
           WHERE mp.player_id = p.id
           AND mp.is_filler = 0
         ) as points_for,
         (
-          SELECT COALESCE(SUM(opp.score_obtained), 0)
+          SELECT COALESCE(SUM(opp.points_won), 0)
           FROM match_players mp
           JOIN match_players opp ON mp.match_id = opp.match_id AND mp.opponent_team_id != opp.opponent_team_id
           WHERE mp.player_id = p.id

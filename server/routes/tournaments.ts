@@ -6,7 +6,7 @@ const router = Router();
 
 // Create Tournament
 router.post('/', async (req, res) => {
-  const { date, location, courtsAvailable, playerIds, matchesPerPlayer } = req.body;
+  const { date, location, courtsAvailable, playerIds, matchesPerPlayer, modality } = req.body;
 
   if (!date || !courtsAvailable || !playerIds || playerIds.length < 8) {
     return res.status(400).json({ error: 'Invalid data. Need date, courts, and at least 8 players.' });
@@ -18,8 +18,8 @@ router.post('/', async (req, res) => {
 
     // 1. Create Tournament
     const [tResult] = await connection.query(
-      'INSERT INTO tournaments (date, location, courts_available, matches_per_player, status) VALUES (?, ?, ?, ?, ?)',
-      [date, location || null, courtsAvailable, matchesPerPlayer || 3, 'in_progress']
+      'INSERT INTO tournaments (date, location, courts_available, matches_per_player, modality, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [date, location || null, courtsAvailable, matchesPerPlayer || 3, modality || '16 puntos', 'in_progress']
     );
     const tournamentId = (tResult as any).insertId;
 
@@ -101,7 +101,7 @@ router.delete('/:id', async (req, res) => {
 // Update Tournament (Players and Basic Info)
 router.put('/:id/players', async (req, res) => {
   const { id } = req.params;
-  const { date, location, courtsAvailable, playerIds } = req.body;
+  const { date, location, courtsAvailable, playerIds, modality } = req.body;
 
   if (!playerIds || playerIds.length < 8) {
     return res.status(400).json({ error: 'Mínimo 8 jugadores requeridos.' });
@@ -113,8 +113,8 @@ router.put('/:id/players', async (req, res) => {
 
     // 1. Update basic tournament info
     await connection.query(
-      'UPDATE tournaments SET date = ?, location = ?, courts_available = ? WHERE id = ?',
-      [date, location || null, courtsAvailable, id]
+      'UPDATE tournaments SET date = ?, location = ?, courts_available = ?, modality = ? WHERE id = ?',
+      [date, location || null, courtsAvailable, modality || '16 puntos', id]
     );
 
     // 2. Replace players
@@ -258,9 +258,9 @@ router.post('/:id/simulate', async (req, res) => {
   const connection = await pool.getConnection();
   try {
     // 1. First, make sure all rounds are generated
-    const [tRows] = await connection.query('SELECT matches_per_player FROM tournaments WHERE id = ?', [id]);
+    const [tRows] = await connection.query('SELECT matches_per_player, modality FROM tournaments WHERE id = ?', [id]);
     if ((tRows as any[]).length === 0) throw new Error('Tournament not found');
-    const matchesPerPlayer = (tRows as any)[0].matches_per_player;
+    const { matches_per_player: matchesPerPlayer, modality } = (tRows as any)[0];
 
     // Generate all remaining matches
     await generateTournamentPlan(parseInt(id), matchesPerPlayer);
@@ -273,10 +273,38 @@ router.post('/:id/simulate', async (req, res) => {
     for (const match of (matches as any[])) {
       const [scores] = await connection.query('SELECT score_obtained FROM match_players WHERE match_id = ? AND score_obtained > 0', [match.id]);
       if ((scores as any[]).length === 0) {
-        const s1 = Math.floor(Math.random() * 17);
-        const s2 = 16 - s1;
-        await connection.query('UPDATE match_players SET score_obtained = ? WHERE match_id = ? AND opponent_team_id = 1', [s1, match.id]);
-        await connection.query('UPDATE match_players SET score_obtained = ? WHERE match_id = ? AND opponent_team_id = 2', [s2, match.id]);
+        let s1, s2;
+        if (modality === '4 games') {
+          const winnerScore = 4;
+          const loserScore = Math.floor(Math.random() * 5); // 0 to 4
+          if (Math.random() > 0.5) {
+            s1 = winnerScore;
+            s2 = loserScore;
+          } else {
+            s1 = loserScore;
+            s2 = winnerScore;
+          }
+        } else {
+          s1 = Math.floor(Math.random() * 17); // 0 to 16
+          s2 = 16 - s1;
+        }
+
+        let s1p = s1;
+        let s2p = s2;
+        if (modality === '4 games') {
+          if (s1 === 4 && s2 === 0) { s1p = 16; s2p = 0; }
+          else if (s1 === 0 && s2 === 4) { s1p = 0; s2p = 16; }
+          else if (s1 === 4 && s2 === 1) { s1p = 13; s2p = 3; }
+          else if (s1 === 1 && s2 === 4) { s1p = 3; s2p = 13; }
+          else if (s1 === 4 && s2 === 2) { s1p = 10; s2p = 6; }
+          else if (s1 === 2 && s2 === 4) { s1p = 6; s2p = 10; }
+          else if (s1 === 4 && s2 === 3) { s1p = 9; s2p = 7; }
+          else if (s1 === 3 && s2 === 4) { s1p = 7; s2p = 9; }
+          else if (s1 === 4 && s2 === 4) { s1p = 8; s2p = 8; }
+        }
+
+        await connection.query('UPDATE match_players SET score_obtained = ?, points_won = ? WHERE match_id = ? AND opponent_team_id = 1', [s1, s1p, match.id]);
+        await connection.query('UPDATE match_players SET score_obtained = ?, points_won = ? WHERE match_id = ? AND opponent_team_id = 2', [s2, s2p, match.id]);
       }
     }
 
@@ -284,7 +312,7 @@ router.post('/:id/simulate', async (req, res) => {
     const [players] = await connection.query('SELECT player_id FROM tournament_players WHERE tournament_id = ?', [id]);
     for (const p of (players as any[])) {
       const [sumRow] = (await connection.query(`
-            SELECT SUM(score_obtained) as total 
+            SELECT SUM(mp.points_won) as total 
             FROM match_players mp 
             JOIN matches m ON mp.match_id = m.id 
             WHERE mp.player_id = ? AND m.tournament_id = ? AND mp.is_filler = 0
