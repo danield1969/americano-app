@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trophy, Activity, Edit2, Check, RefreshCcw, MapPin, Trash2 } from 'lucide-react';
 import './TournamentView.css';
-import { getTournamentMatches, getTournamentStandings, submitMatchScore, getTournament, simulateTournament, generateNextRound, shuffleMatch, updateMatchPlayer, deleteMatch } from '../api';
+import { getTournamentMatches, getTournamentStandings, submitMatchScore, getTournament, simulateTournament, generateNextMatch, shuffleMatch, updateMatchPlayer, deleteMatch } from '../api';
 
 interface TournamentViewProps {
   tournamentId: number;
@@ -74,12 +74,39 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
     onError: (err: any) => alert(err.response?.data?.error || 'Error al simular resultados')
   });
 
-  const nextRoundMutation = useMutation({
-    mutationFn: () => generateNextRound(tournamentId),
+  const nextMatchMutation = useMutation({
+    mutationFn: (force: boolean) => {
+      // Calculate current progress for busy courts
+      const courtProgress: Record<number, number> = {};
+      if (force && matchData?.matches) {
+        matchData.matches.forEach((m: any) => {
+          const s1 = parseInt(scores[`${m.id}_1`] || "0");
+          const s2 = parseInt(scores[`${m.id}_2`] || "0");
+          const dbP = getPlayersForMatch(m.id);
+          const dbS1 = dbP.find((p: any) => p.opponent_team_id === 1)?.score_obtained || 0;
+          const dbS2 = dbP.find((p: any) => p.opponent_team_id === 2)?.score_obtained || 0;
+
+          // Only consider matches that are not "saved" in DB yet (sum 0) or use local if higher
+          const currentTotal = Math.max(s1 + s2, dbS1 + dbS2);
+          if (!courtProgress[m.court_number] || currentTotal > courtProgress[m.court_number]) {
+            courtProgress[m.court_number] = currentTotal;
+          }
+        });
+      }
+      return generateNextMatch(tournamentId, force, courtProgress);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['matches', tournamentId] });
     },
-    onError: (err: any) => alert(err.response?.data?.error || 'Error al generar ronda')
+    onError: (err: any) => {
+      if (err.response?.data?.error === 'BUSY_COURTS') {
+        if (confirm('Todas las canchas están ocupadas. ¿Deseas generar el siguiente partido de todas formas? Se asignará a la cancha más avanzada.')) {
+          nextMatchMutation.mutate(true);
+        }
+      } else {
+        alert(err.response?.data?.error || 'Error al generar partido');
+      }
+    }
   });
 
   const deleteMatchMutation = useMutation({
@@ -182,18 +209,18 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
         {activeTab === 'matches' && (
           <div className="matches-section">
             <div className="actions-bar" style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-              {matchData?.matches?.length < Math.ceil(((standings?.length || 0) * (tournamentData?.matches_per_player || 3)) / 4) ? (
-                <button
-                  className="btn-primary"
-                  onClick={() => nextRoundMutation.mutate()}
-                  disabled={nextRoundMutation.isPending}
-                  style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
-                >
-                  {nextRoundMutation.isPending ? 'Generando...' : 'Generar Siguiente Ronda'}
-                </button>
-              ) : (
-                <p className="completion-message" style={{ color: '#10b981', fontWeight: '600', fontSize: '1.1rem', textAlign: 'center' }}>
-                  Se han completado todos los partidos del Americano
+              <button
+                className="btn-primary"
+                onClick={() => nextMatchMutation.mutate(false)}
+                disabled={nextMatchMutation.isPending}
+                style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
+              >
+                {nextMatchMutation.isPending ? 'Generando...' : 'Generar Nuevo Partido'}
+              </button>
+
+              {matchData?.matches?.length >= Math.ceil(((standings?.length || 0) * (tournamentData?.matches_per_player || 3)) / 4) && (
+                <p className="completion-message" style={{ color: '#10b981', fontWeight: '600', fontSize: '1.1rem', textAlign: 'center', marginTop: '5px' }}>
+                  Se han completado los partidos teóricos del Americano
                 </p>
               )}
             </div>
@@ -225,22 +252,25 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                   {team1.map((p: any) => (
                                     <div key={p.player_id} className="player-selector-container">
                                       {dbScore1 === 0 && dbScore2 === 0 ? (
-                                        <select
-                                          className="player-select-inline"
-                                          value={p.player_id}
-                                          onChange={(e) => updatePlayerMutation.mutate({
-                                            matchId: match.id,
-                                            oldPlayerId: p.player_id,
-                                            newPlayerId: parseInt(e.target.value)
-                                          })}
-                                          disabled={updatePlayerMutation.isPending}
-                                        >
-                                          {standings?.map((s: any) => (
-                                            <option key={s.player_id} value={s.player_id}>
-                                              {s.name}
-                                            </option>
-                                          ))}
-                                        </select>
+                                        <>
+                                          <select
+                                            className={`player-select-inline ${p.is_filler ? 'filler' : ''}`}
+                                            value={p.player_id}
+                                            onChange={(e) => updatePlayerMutation.mutate({
+                                              matchId: match.id,
+                                              oldPlayerId: p.player_id,
+                                              newPlayerId: parseInt(e.target.value)
+                                            })}
+                                            disabled={updatePlayerMutation.isPending}
+                                          >
+                                            {standings?.map((s: any) => (
+                                              <option key={s.player_id} value={s.player_id}>
+                                                {s.name} {s.games_played >= (tournamentData?.matches_per_player || 3) ? ' (C)' : ''}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          {p.is_filler === 1 && <span className="filler-tag-inline" style={{ fontSize: '0.7rem', color: '#f97316', marginLeft: '4px', fontWeight: 'bold' }}>(C)</span>}
+                                        </>
                                       ) : (
                                         <div className={`player-name ${p.is_filler ? 'filler' : ''}`}>
                                           {p.name} {p.is_filler === 1 && <span className="filler-tag">(C)</span>}
@@ -277,22 +307,25 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                   {team2.map((p: any) => (
                                     <div key={p.player_id} className="player-selector-container">
                                       {dbScore1 === 0 && dbScore2 === 0 ? (
-                                        <select
-                                          className="player-select-inline"
-                                          value={p.player_id}
-                                          onChange={(e) => updatePlayerMutation.mutate({
-                                            matchId: match.id,
-                                            oldPlayerId: p.player_id,
-                                            newPlayerId: parseInt(e.target.value)
-                                          })}
-                                          disabled={updatePlayerMutation.isPending}
-                                        >
-                                          {standings?.map((s: any) => (
-                                            <option key={s.player_id} value={s.player_id}>
-                                              {s.name}
-                                            </option>
-                                          ))}
-                                        </select>
+                                        <>
+                                          <select
+                                            className={`player-select-inline ${p.is_filler ? 'filler' : ''}`}
+                                            value={p.player_id}
+                                            onChange={(e) => updatePlayerMutation.mutate({
+                                              matchId: match.id,
+                                              oldPlayerId: p.player_id,
+                                              newPlayerId: parseInt(e.target.value)
+                                            })}
+                                            disabled={updatePlayerMutation.isPending}
+                                          >
+                                            {standings?.map((s: any) => (
+                                              <option key={s.player_id} value={s.player_id}>
+                                                {s.name} {s.games_played >= (tournamentData?.matches_per_player || 3) ? ' (C)' : ''}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          {p.is_filler === 1 && <span className="filler-tag-inline" style={{ fontSize: '0.7rem', color: '#f97316', marginLeft: '4px', fontWeight: 'bold' }}>(C)</span>}
+                                        </>
                                       ) : (
                                         <div className={`player-name ${p.is_filler ? 'filler' : ''}`}>
                                           {p.name} {p.is_filler === 1 && <span className="filler-tag">(C)</span>}

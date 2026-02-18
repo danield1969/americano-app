@@ -170,7 +170,7 @@ function App() {
         <footer className="main-footer">
           <div className="footer-content glass-panel">
             <p className="footer-derechos">© 2026 • Todos los derechos reservados • Daniel Domínguez</p>
-            <p className="footer-version">v 1.5</p>
+            <p className="footer-version">v 1.6</p>
           </div>
         </footer>
       </div>

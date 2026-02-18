@@ -66,6 +66,11 @@ export const generateNextRound = async (id: number) => {
   return response.data;
 };
 
+export const generateNextMatch = async (id: number, force: boolean = false, courtProgress?: Record<number, number>) => {
+  const response = await api.post(`/tournaments/${id}/next-match`, { force, courtProgress });
+  return response.data;
+};
+
 export const shuffleTournament = async (id: number) => {
   const response = await api.post(`/tournaments/${id}/shuffle`);
   return response.data;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import pool from '../config/database';
-import { generateTournamentPlan, generateRound } from '../services/matchmaker';
+import { generateTournamentPlan, generateRound, generateNextMatch } from '../services/matchmaker';
 
 const router = Router();
 
@@ -314,6 +314,22 @@ router.post('/:id/next-round', async (req, res) => {
   } catch (error: any) {
     console.error('Next Round Error:', error);
     res.status(500).json({ error: 'Error al generar ronda: ' + error.message });
+  }
+});
+
+// Generate Next Match (INDIVIDUAL)
+router.post('/:id/next-match', async (req, res) => {
+  const { id } = req.params;
+  const { force, courtProgress } = req.body;
+  try {
+    const result = await generateNextMatch(parseInt(id), force, courtProgress);
+    if ((result as any).error === 'BUSY_COURTS') {
+      return res.status(409).json({ error: 'BUSY_COURTS', message: 'Todas las canchas están ocupadas.' });
+    }
+    res.json({ message: 'Partido generado', ...result });
+  } catch (error: any) {
+    console.error('Next Match Error:', error);
+    res.status(500).json({ error: 'Error al generar partido: ' + error.message });
   }
 });
 

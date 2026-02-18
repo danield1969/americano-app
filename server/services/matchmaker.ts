@@ -367,3 +367,213 @@ export const shuffleSingleMatch = async (matchId: number) => {
     connection.release();
   }
 };
+
+export const generateNextMatch = async (tournamentId: number, force: boolean = false, courtProgress?: Record<number, number>) => {
+  const connection = await pool.getConnection();
+  try {
+    // 1. Get Tournament Info
+    const [tRows] = await connection.query('SELECT courts_available, matches_per_player FROM tournaments WHERE id = ?', [tournamentId]);
+    if ((tRows as any[]).length === 0) throw new Error("Torneo no encontrado");
+    const { courts_available: courtsAvailable, matches_per_player: matchesPerPlayer } = (tRows as any)[0];
+
+    // 2. Get Current Matches to check court availability
+    // Redefine "In Progress": No score has been saved yet (which usually means 0-0 in this app)
+    // Looking at the codebase, they use score_obtained > 0 to detect finished matches.
+    const [unfinishedRows] = await connection.query(`
+      SELECT m.id, m.court_number, m.round_number,
+             SUM(mp.score_obtained) as total_score
+      FROM matches m
+      JOIN match_players mp ON m.id = mp.match_id
+      WHERE m.tournament_id = ?
+      GROUP BY m.id
+      HAVING MAX(mp.score_obtained) = 0
+    `, [tournamentId]);
+
+    const unfinishedMatches = unfinishedRows as any[];
+    const busyCourts = new Set(unfinishedMatches.map(m => m.court_number));
+
+    let selectedCourt = -1;
+    for (let i = 1; i <= courtsAvailable; i++) {
+      if (!busyCourts.has(i)) {
+        selectedCourt = i;
+        break;
+      }
+    }
+
+    if (selectedCourt === -1) {
+      if (!force) {
+        return { error: 'BUSY_COURTS' };
+      }
+
+      if (courtProgress) {
+        let maxScore = -1;
+        Object.entries(courtProgress).forEach(([court, score]) => {
+          if (score > maxScore) {
+            maxScore = score;
+            selectedCourt = parseInt(court);
+          }
+        });
+      }
+
+      if (selectedCourt === -1) {
+        // Fallback to DB check
+        const [courtStats] = await connection.query(`
+          SELECT m.court_number, SUM(mp.score_obtained) as total_sum
+          FROM matches m
+          JOIN match_players mp ON m.id = mp.match_id
+          WHERE m.tournament_id = ?
+          AND m.id IN (
+            SELECT m2.id FROM matches m2 
+            WHERE m2.tournament_id = ? 
+            AND m2.id NOT IN (
+               SELECT match_id FROM match_players WHERE score_obtained > 0
+            )
+          )
+          GROUP BY m.court_number
+        `, [tournamentId, tournamentId]);
+
+        selectedCourt = 1;
+        let maxScore = -1;
+        (courtStats as any[]).forEach(cs => {
+          if (cs.total_sum > maxScore) {
+            maxScore = cs.total_sum;
+            selectedCourt = cs.court_number;
+          }
+        });
+      }
+    }
+
+    // 3. Get Players stats
+    const [tpRows] = await connection.query(`
+      SELECT tp.player_id, 
+             (SELECT COUNT(*) FROM match_players mp 
+              JOIN matches m ON mp.match_id = m.id 
+              WHERE mp.player_id = tp.player_id AND m.tournament_id = ? AND mp.is_filler = 0) as games_played,
+             (SELECT MAX(m.round_number) FROM match_players mp 
+              JOIN matches m ON mp.match_id = m.id 
+              WHERE mp.player_id = tp.player_id AND m.tournament_id = ?) as last_round
+      FROM tournament_players tp
+      WHERE tp.tournament_id = ?
+    `, [tournamentId, tournamentId, tournamentId]);
+
+    const players = (tpRows as any[]).map(row => ({
+      id: row.player_id,
+      gamesPlayed: row.games_played,
+      lastRound: row.last_round || 0,
+      partners: new Set<number>(),
+      opponents: new Set<number>()
+    }));
+
+    // 4. History (same as generateRound)
+    const [historyRows] = await connection.query(`
+      SELECT mp.match_id, mp.player_id, mp.partner_id, mp.opponent_team_id
+      FROM match_players mp
+      JOIN matches m ON mp.match_id = m.id
+      WHERE m.tournament_id = ?
+    `, [tournamentId]);
+
+    const matchesHistory = new Map<number, any[]>();
+    (historyRows as any[]).forEach(row => {
+      if (!matchesHistory.has(row.match_id)) matchesHistory.set(row.match_id, []);
+      matchesHistory.get(row.match_id)!.push(row);
+
+      const p = players.find(x => x.id === row.player_id);
+      if (p && row.partner_id) p.partners.add(row.partner_id);
+    });
+
+    matchesHistory.forEach((playersInMatch) => {
+      playersInMatch.forEach(p1Row => {
+        const p1 = players.find(x => x.id === p1Row.player_id);
+        if (!p1) return;
+        playersInMatch.forEach(p2Row => {
+          if (p1Row.opponent_team_id !== p2Row.opponent_team_id) {
+            p1.opponents.add(p2Row.player_id);
+          }
+        });
+      });
+    });
+
+    // 5. Select 4 players
+    players.sort((a, b) => {
+      if (a.gamesPlayed !== b.gamesPlayed) return a.gamesPlayed - b.gamesPlayed;
+      if (a.lastRound !== b.lastRound) return a.lastRound - b.lastRound;
+      return Math.random() - 0.5;
+    });
+
+    const selectedPlayers = players.slice(0, 4);
+    if (selectedPlayers.length < 4) throw new Error("No hay suficientes jugadores");
+
+    // 6. Optimize Pairing
+    let bestMatch = null;
+    let bestScore = Infinity;
+
+    for (let attempt = 0; attempt < 500; attempt++) {
+      const shuffled = [...selectedPlayers].sort(() => Math.random() - 0.5);
+      let currentScore = 0;
+
+      const p1 = shuffled[0];
+      const p2 = shuffled[1];
+      const p3 = shuffled[2];
+      const p4 = shuffled[3];
+
+      if (p1.partners.has(p2.id)) currentScore += 5000;
+      if (p3.partners.has(p4.id)) currentScore += 5000;
+
+      if (p1.opponents.has(p3.id)) currentScore += 1000;
+      if (p1.opponents.has(p4.id)) currentScore += 1000;
+      if (p2.opponents.has(p3.id)) currentScore += 1000;
+      if (p2.opponents.has(p4.id)) currentScore += 1000;
+
+      if (currentScore < bestScore) {
+        bestScore = currentScore;
+        bestMatch = { team1: [p1, p2], team2: [p3, p4] };
+        if (currentScore === 0) break;
+      }
+    }
+
+    if (!bestMatch) throw new Error("Error generando partido");
+
+    // 7. Determine Round Number
+    const [rRows] = await connection.query('SELECT MAX(round_number) as max_r FROM matches WHERE tournament_id = ?', [tournamentId]);
+    let nextRound = (rRows as any)[0].max_r || 1;
+
+    // Check if this court is already used in this round
+    const [existing] = await connection.query(
+      'SELECT id FROM matches WHERE tournament_id = ? AND round_number = ? AND court_number = ?',
+      [tournamentId, nextRound, selectedCourt]
+    );
+    if ((existing as any[]).length > 0) {
+      nextRound++;
+    }
+
+    // 8. Save
+    await connection.beginTransaction();
+    const [mRes] = await connection.query(
+      'INSERT INTO matches (tournament_id, round_number, court_number) VALUES (?, ?, ?)',
+      [tournamentId, nextRound, selectedCourt]
+    );
+    const matchId = (mRes as any).insertId;
+
+    const insertPlayer = async (p: any, partnerId: number, otid: number) => {
+      const isFiller = p.gamesPlayed >= matchesPerPlayer;
+      await connection.query(
+        'INSERT INTO match_players (match_id, player_id, partner_id, opponent_team_id, is_filler) VALUES (?, ?, ?, ?, ?)',
+        [matchId, p.id, partnerId, otid, isFiller]
+      );
+    };
+
+    await insertPlayer(bestMatch.team1[0], bestMatch.team1[1].id, 1);
+    await insertPlayer(bestMatch.team1[1], bestMatch.team1[0].id, 1);
+    await insertPlayer(bestMatch.team2[0], bestMatch.team2[1].id, 2);
+    await insertPlayer(bestMatch.team2[1], bestMatch.team2[0].id, 2);
+
+    await connection.commit();
+    return { success: true, matchId, court: selectedCourt, round: nextRound };
+
+  } catch (err) {
+    if (connection) await connection.rollback();
+    throw err;
+  } finally {
+    if (connection) connection.release();
+  }
+};
