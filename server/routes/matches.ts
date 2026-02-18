@@ -33,12 +33,13 @@ router.post('/:id/score', async (req, res) => {
     const [players] = await connection.query('SELECT player_id, opponent_team_id FROM match_players WHERE match_id = ?', [id]);
 
     // 2. Update match_players score (SAVE RAW SCORES AND CALCULATED POINTS)
-    const t1ScoreRaw = parseInt(team1Score);
-    const t2ScoreRaw = parseInt(team2Score);
+    const matchIdInt = parseInt(id);
+    const t1ScoreRaw = parseInt(team1Score as string) || 0;
+    const t2ScoreRaw = parseInt(team2Score as string) || 0;
 
     // Get tournament info
-    const [mRow] = (await connection.query('SELECT tournament_id FROM matches WHERE id = ?', [id])) as any;
-    if (mRow.length === 0) throw new Error('Match not found');
+    const [mRow] = (await connection.query('SELECT tournament_id FROM matches WHERE id = ?', [matchIdInt])) as any;
+    if (!mRow || mRow.length === 0) throw new Error(`Match ${matchIdInt} not found`);
     const tournamentId = mRow[0].tournament_id;
 
     const [tRow] = (await connection.query('SELECT modality FROM tournaments WHERE id = ?', [tournamentId])) as any;
@@ -69,8 +70,8 @@ router.post('/:id/score', async (req, res) => {
     }
 
     // Update Scores 
-    await connection.query('UPDATE match_players SET score_obtained = ?, points_won = ? WHERE match_id = ? AND opponent_team_id = 1', [t1ScoreRaw, t1Points, id]);
-    await connection.query('UPDATE match_players SET score_obtained = ?, points_won = ? WHERE match_id = ? AND opponent_team_id = 2', [t2ScoreRaw, t2Points, id]);
+    await connection.query('UPDATE match_players SET score_obtained = ?, points_won = ? WHERE match_id = ? AND opponent_team_id = 1', [t1ScoreRaw, t1Points, matchIdInt]);
+    await connection.query('UPDATE match_players SET score_obtained = ?, points_won = ? WHERE match_id = ? AND opponent_team_id = 2', [t2ScoreRaw, t2Points, matchIdInt]);
 
     // For each player in this match, recalculate their total score in this tournament
     for (const p of (players as any[])) {
@@ -87,10 +88,10 @@ router.post('/:id/score', async (req, res) => {
 
     await connection.commit();
     res.json({ success: true });
-  } catch (error) {
-    await connection.rollback();
-    console.error(error);
-    res.status(500).json({ error: 'Database error' });
+  } catch (error: any) {
+    if (connection) await connection.rollback();
+    console.error('Score Submission Error:', error);
+    res.status(500).json({ error: error.message || 'Database error' });
   } finally {
     connection.release();
   }

@@ -36,10 +36,10 @@ router.post('/', async (req, res) => {
     await generateRound(tournamentId);
 
     res.status(201).json({ id: tournamentId, message: 'Tournament started and all matches generated' });
-  } catch (error) {
+  } catch (error: any) {
     if (connection) await connection.rollback();
-    console.error(error);
-    res.status(500).json({ error: 'Failed to create tournament' });
+    console.error('Tournament Creation Error:', error);
+    res.status(500).json({ error: error.message || 'Failed to create tournament' });
   } finally {
     connection.release();
   }

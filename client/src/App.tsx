@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Trophy, Users, Calendar, History, BarChart2, Menu as MenuIcon, X, Home as HomeIcon } from 'lucide-react'
+import { Trophy, Users, Calendar, History, BarChart2, Menu as MenuIcon, X, Home as HomeIcon, BookOpen } from 'lucide-react'
 import Home from './components/Home'
 import PlayerList from './components/PlayerList'
 import TournamentSetup from './components/TournamentSetup'
 import TournamentView from './components/TournamentView'
 import TournamentHistory from './components/TournamentHistory'
 import GlobalStats from './components/GlobalStats'
+import RulesView from './components/RulesView'
 import './App.css'
 
 const queryClient = new QueryClient();
 
-type View = 'home' | 'players' | 'tournament' | 'history' | 'global';
+type View = 'home' | 'players' | 'rules' | 'tournament' | 'history' | 'global';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>(() => {
@@ -93,6 +94,12 @@ function App() {
               <Users size={18} /> Jugadores
             </button>
             <button
+              className={`nav-btn ${currentView === 'rules' ? 'active' : ''}`}
+              onClick={() => navigateTo('rules')}
+            >
+              <BookOpen size={18} /> Reglas
+            </button>
+            <button
               className={`nav-btn ${currentView === 'tournament' && !activeTournamentId ? 'active' : ''}`}
               onClick={() => {
                 setActiveTournamentId(null);
@@ -132,6 +139,8 @@ function App() {
           {currentView === 'home' && <Home onNavigate={navigateTo} />}
 
           {currentView === 'players' && <PlayerList />}
+
+          {currentView === 'rules' && <RulesView />}
 
           {currentView === 'tournament' && (
             isEditing || !activeTournamentId ? (

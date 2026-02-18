@@ -151,7 +151,7 @@ export const generateRound = async (tournamentId: number) => {
       const insertPlayer = async (p: any, partnerId: number, otid: number) => {
         const isFiller = p.gamesPlayed >= matchesPerPlayer;
         await connection.query(
-          'INSERT INTO match_players (match_id, player_id, partner_id, opponent_team_id, is_filler) VALUES (?, ?, ?, ?, ?)',
+          'INSERT INTO match_players (match_id, player_id, partner_id, opponent_team_id, is_filler, points_won) VALUES (?, ?, ?, ?, ?, 0)',
           [matchId, p.id, partnerId, otid, isFiller]
         );
       };
@@ -348,7 +348,7 @@ export const shuffleSingleMatch = async (matchId: number) => {
     const insertP = async (p: any, partnerId: number, otId: number) => {
       const isFiller = p.gamesPlayed >= matchesPerPlayer;
       await connection.query(
-        'INSERT INTO match_players (match_id, player_id, partner_id, opponent_team_id, is_filler) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO match_players (match_id, player_id, partner_id, opponent_team_id, is_filler, points_won) VALUES (?, ?, ?, ?, ?, 0)',
         [matchId, p.id, partnerId, otId, isFiller]
       );
     };
@@ -557,7 +557,7 @@ export const generateNextMatch = async (tournamentId: number, force: boolean = f
     const insertPlayer = async (p: any, partnerId: number, otid: number) => {
       const isFiller = p.gamesPlayed >= matchesPerPlayer;
       await connection.query(
-        'INSERT INTO match_players (match_id, player_id, partner_id, opponent_team_id, is_filler) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO match_players (match_id, player_id, partner_id, opponent_team_id, is_filler, points_won) VALUES (?, ?, ?, ?, ?, 0)',
         [matchId, p.id, partnerId, otid, isFiller]
       );
     };
