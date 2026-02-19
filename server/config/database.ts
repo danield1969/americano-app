@@ -10,8 +10,7 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'americano_db',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0,
-  timezone: 'Z'
+  queueLimit: 0
 });
 
 export default pool;

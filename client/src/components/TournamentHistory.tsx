@@ -30,7 +30,10 @@ export default function TournamentHistory({ onSelectTournament, onTournamentDele
     e.stopPropagation();
     e.preventDefault();
 
-    const formattedDate = new Date(date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+    const dateParts = date.split('T')[0].split('-');
+    const localDate = new Date(Number(dateParts[0]), Number(dateParts[1]) - 1, Number(dateParts[2]));
+    const formattedDate = localDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+
     if (window.confirm(`¿Estás seguro de que deseas eliminar la jornada del ${formattedDate}? Esta acción borrará todos los partidos y puntos asociados de forma permanente.`)) {
       deleteMutation.mutate(id);
     }
@@ -55,12 +58,16 @@ export default function TournamentHistory({ onSelectTournament, onTournamentDele
             <div className="t-info">
               <span className="t-location">{t.location || `Torneo #${t.id}`}</span>
               <span className="t-date">
-                {new Date(t.date).toLocaleDateString('es-ES', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+                {(() => {
+                  const dateParts = t.date.split('T')[0].split('-');
+                  const localDate = new Date(Number(dateParts[0]), Number(dateParts[1]) - 1, Number(dateParts[2]));
+                  return localDate.toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  });
+                })()}
               </span>
               <div className="t-meta">
                 <span className="t-courts">{t.courts_available} canchas</span>
