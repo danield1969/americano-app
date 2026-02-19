@@ -602,6 +602,83 @@
   cursor: not-allowed;
 }
 
+/* Actions Bar Responsiveness */
+.actions-bar {
+  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.4);
+  padding: 1rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 15px;
+}
+
+.actions-bar .btn-primary {
+  white-space: nowrap;
+}
+
+.status-finish-toggle {
+  justify-self: end;
+}
+
+@media (max-width: 640px) {
+  .actions-bar {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1rem;
+    justify-items: center;
+  }
+
+  .actions-bar>div:first-child {
+    display: none;
+  }
+
+  .actions-bar .btn-primary {
+    width: 100%;
+    text-align: center;
+    white-space: normal;
+    height: auto;
+    padding: 0.75rem 1rem;
+    line-height: 1.2;
+  }
+
+  .status-finish-toggle {
+    max-width: 300px;
+    justify-content: space-between;
+    justify-self: center !important;
+    background: rgba(15, 23, 42, 0.8);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.completion-container {
+  grid-column: 1 / span 3;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.completion-message {
+  color: #10b981;
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-align: center;
+  margin-top: 10px;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .completion-container {
+    grid-column: 1;
+  }
+
+  .completion-message {
+    font-size: 0.95rem;
+  }
+}
+
 /* Ranking Table Responsive */
 .ranking-section {
   padding: 1rem;

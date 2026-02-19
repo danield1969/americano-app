@@ -259,17 +259,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
       <div className="view-content">
         {activeTab === 'matches' && (
           <div className="matches-section">
-            <div className="actions-bar" style={{
-              marginBottom: '2rem',
-              display: 'grid',
-              gridTemplateColumns: '1fr auto 1fr',
-              alignItems: 'center',
-              background: 'rgba(15, 23, 42, 0.4)',
-              padding: '1rem 1.5rem',
-              borderRadius: '16px',
-              border: '1px solid rgba(255, 255, 255, 0.05)',
-              gap: '15px'
-            }}>
+            <div className="actions-bar">
               <div /> {/* Spacer for left side */}
 
               {isAdmin && (
@@ -277,15 +267,14 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                   className="btn-primary"
                   onClick={() => nextMatchMutation.mutate(false)}
                   disabled={nextMatchMutation.isPending || tournamentData?.status === 'completed'}
-                  style={{ padding: '0.75rem 2rem', fontSize: '1rem', margin: 0, whiteSpace: 'nowrap' }}
                 >
                   {nextMatchMutation.isPending ? 'Generando...' : 'Generar Nuevo Partido'}
                 </button>
               )}
 
               {isAdmin && (
-                <div className="status-finish-toggle" title="Finalizar torneo manualmente" style={{ margin: 0, justifySelf: 'end' }}>
-                  <span className="toggle-label" style={{ fontSize: '0.75rem' }}>Torneo Finalizado</span>
+                <div className="status-finish-toggle" title="Finalizar torneo manualmente">
+                  <span className="toggle-label">Torneo Finalizado</span>
                   <button
                     className={`toggle-switch ${tournamentData?.status === 'completed' ? 'active' : ''}`}
                     onClick={() => {
@@ -310,8 +299,8 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
 
                 if (allFinished && matchData?.matches?.length > 0) {
                   return (
-                    <div style={{ gridColumn: '1 / span 3', display: 'flex', justifyContent: 'center' }}>
-                      <p className="completion-message" style={{ color: '#10b981', fontWeight: '600', fontSize: '1.1rem', textAlign: 'center', marginTop: '10px' }}>
+                    <div className="completion-container">
+                      <p className="completion-message">
                         Se han generado todos los partidos necesarios para que todos jueguen sus {matchesPerPlayer} juegos.
                       </p>
                     </div>
