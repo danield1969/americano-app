@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trophy, Activity, Edit2, Check, RefreshCcw, MapPin, Trash2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import './TournamentView.css';
 import { getTournamentMatches, getTournamentStandings, submitMatchScore, getTournament, simulateTournament, generateNextMatch, shuffleMatch, updateMatchPlayer, deleteMatch, updateTournamentStatus } from '../api';
 
@@ -13,6 +14,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'matches' | 'ranking'>('matches');
   const [scores, setScores] = useState<{ [key: string]: string }>({}); // matchId_team: score
+  const { isAdmin } = useAuth();
 
   const { data: tournamentData } = useQuery({
     queryKey: ['tournament', tournamentId],
@@ -218,7 +220,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                 );
               })()}
             </div>
-            {!matchesLoading && matchData?.matches?.length > 0 && tournamentData?.status !== 'completed' && (
+            {isAdmin && !matchesLoading && matchData?.matches?.length > 0 && tournamentData?.status !== 'completed' && (
               <div className="header-actions">
                 <button
                   className="simulate-btn"
@@ -232,9 +234,11 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
               </div>
             )}
           </div>
-          <button className="edit-view-btn" onClick={handleBackWithCheck} title="Editar Jugadores / Configuración">
-            <Edit2 size={20} />
-          </button>
+          {isAdmin && (
+            <button className="edit-view-btn" onClick={handleBackWithCheck} title="Editar Jugadores / Configuración">
+              <Edit2 size={20} />
+            </button>
+          )}
         </div>
         <div className="tabs">
           <button
@@ -268,30 +272,34 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
             }}>
               <div /> {/* Spacer for left side */}
 
-              <button
-                className="btn-primary"
-                onClick={() => nextMatchMutation.mutate(false)}
-                disabled={nextMatchMutation.isPending || tournamentData?.status === 'completed'}
-                style={{ padding: '0.75rem 2rem', fontSize: '1rem', margin: 0, whiteSpace: 'nowrap' }}
-              >
-                {nextMatchMutation.isPending ? 'Generando...' : 'Generar Nuevo Partido'}
-              </button>
-
-              <div className="status-finish-toggle" title="Finalizar torneo manualmente" style={{ margin: 0, justifySelf: 'end' }}>
-                <span className="toggle-label" style={{ fontSize: '0.75rem' }}>Torneo Finalizado</span>
+              {isAdmin && (
                 <button
-                  className={`toggle-switch ${tournamentData?.status === 'completed' ? 'active' : ''}`}
-                  onClick={() => {
-                    const newStatus = tournamentData?.status === 'completed' ? 'in_progress' : 'completed';
-                    if (confirm(`¿Marcar torneo como ${newStatus === 'completed' ? 'FINALIZADO' : 'EN CURSO'}?`)) {
-                      statusMutation.mutate(newStatus);
-                    }
-                  }}
-                  disabled={statusMutation.isPending}
+                  className="btn-primary"
+                  onClick={() => nextMatchMutation.mutate(false)}
+                  disabled={nextMatchMutation.isPending || tournamentData?.status === 'completed'}
+                  style={{ padding: '0.75rem 2rem', fontSize: '1rem', margin: 0, whiteSpace: 'nowrap' }}
                 >
-                  <div className="toggle-knob" />
+                  {nextMatchMutation.isPending ? 'Generando...' : 'Generar Nuevo Partido'}
                 </button>
-              </div>
+              )}
+
+              {isAdmin && (
+                <div className="status-finish-toggle" title="Finalizar torneo manualmente" style={{ margin: 0, justifySelf: 'end' }}>
+                  <span className="toggle-label" style={{ fontSize: '0.75rem' }}>Torneo Finalizado</span>
+                  <button
+                    className={`toggle-switch ${tournamentData?.status === 'completed' ? 'active' : ''}`}
+                    onClick={() => {
+                      const newStatus = tournamentData?.status === 'completed' ? 'in_progress' : 'completed';
+                      if (confirm(`¿Marcar torneo como ${newStatus === 'completed' ? 'FINALIZADO' : 'EN CURSO'}?`)) {
+                        statusMutation.mutate(newStatus);
+                      }
+                    }}
+                    disabled={statusMutation.isPending}
+                  >
+                    <div className="toggle-knob" />
+                  </button>
+                </div>
+              )}
 
               {(() => {
                 const matchesPerPlayer = tournamentData?.matches_per_player || 3;
@@ -376,6 +384,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                   onChange={(e) => handleScoreChange(match.id, 1, e.target.value)}
                                   onFocus={(e) => e.target.select()}
                                   onKeyDown={(e) => e.key === 'Enter' && handleSaveScore(match.id)}
+                                  readOnly={!isAdmin}
                                 />
                               </div>
 
@@ -400,11 +409,12 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                   onChange={(e) => handleScoreChange(match.id, 2, e.target.value)}
                                   onFocus={(e) => e.target.select()}
                                   onKeyDown={(e) => e.key === 'Enter' && handleSaveScore(match.id)}
+                                  readOnly={!isAdmin}
                                 />
                                 <div className="team-info">
                                   {team2.map((p: any) => (
                                     <div key={p.player_id} className="player-selector-container">
-                                      {dbScore1 === 0 && dbScore2 === 0 ? (
+                                      {isAdmin && dbScore1 === 0 && dbScore2 === 0 ? (
                                         <>
                                           <select
                                             className={`player-select-inline ${p.is_filler ? 'filler' : ''}`}
@@ -435,35 +445,37 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                               </div>
                             </div>
 
-                            <div className="match-footer">
-                              <button
-                                className="delete-match-btn"
-                                onClick={() => {
-                                  if (confirm('¿Estás seguro de que deseas eliminar este partido? Los puntos asociados se perderán.')) {
-                                    deleteMatchMutation.mutate(match.id);
-                                  }
-                                }}
-                                disabled={deleteMatchMutation.isPending}
-                                title="Eliminar este partido"
-                                tabIndex={-1}
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                              <button className="save-match-btn" onClick={() => handleSaveScore(match.id)}>
-                                Guardar
-                              </button>
-                              {dbScore1 === 0 && dbScore2 === 0 && (
+                            {isAdmin && (
+                              <div className="match-footer">
                                 <button
-                                  className="individual-shuffle-btn"
-                                  onClick={() => shuffleMatchMutation.mutate(match.id)}
-                                  disabled={shuffleMatchMutation.isPending}
-                                  title="Revolver jugadores de este partido"
+                                  className="delete-match-btn"
+                                  onClick={() => {
+                                    if (confirm('¿Estás seguro de que deseas eliminar este partido? Los puntos asociados se perderán.')) {
+                                      deleteMatchMutation.mutate(match.id);
+                                    }
+                                  }}
+                                  disabled={deleteMatchMutation.isPending}
+                                  title="Eliminar este partido"
                                   tabIndex={-1}
                                 >
-                                  <RefreshCcw size={14} className={shuffleMatchMutation.isPending ? 'spin' : ''} />
+                                  <Trash2 size={16} />
                                 </button>
-                              )}
-                            </div>
+                                <button className="save-match-btn" onClick={() => handleSaveScore(match.id)}>
+                                  Guardar
+                                </button>
+                                {dbScore1 === 0 && dbScore2 === 0 && (
+                                  <button
+                                    className="individual-shuffle-btn"
+                                    onClick={() => shuffleMatchMutation.mutate(match.id)}
+                                    disabled={shuffleMatchMutation.isPending}
+                                    title="Revolver jugadores de este partido"
+                                    tabIndex={-1}
+                                  >
+                                    <RefreshCcw size={14} className={shuffleMatchMutation.isPending ? 'spin' : ''} />
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}

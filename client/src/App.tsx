@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Trophy, Users, Calendar, History, BarChart2, Menu as MenuIcon, X, Home as HomeIcon, BookOpen } from 'lucide-react'
+import { Trophy, Users, Calendar, History, BarChart2, Menu as MenuIcon, X, Home as HomeIcon, BookOpen, LogIn, LogOut } from 'lucide-react'
 import Home from './components/Home'
 import PlayerList from './components/PlayerList'
 import TournamentSetup from './components/TournamentSetup'
@@ -8,6 +8,8 @@ import TournamentView from './components/TournamentView'
 import TournamentHistory from './components/TournamentHistory'
 import GlobalStats from './components/GlobalStats'
 import RulesView from './components/RulesView'
+import LoginModal from './components/LoginModal'
+import { useAuth } from './contexts/AuthContext'
 import './App.css'
 
 const queryClient = new QueryClient();
@@ -34,12 +36,33 @@ function App() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const { isAdmin, logout } = useAuth();
 
   // Persistence & Visit Tracking
   useEffect(() => {
     localStorage.setItem('americano_view', currentView);
     localStorage.setItem('americano_last_visit', Date.now().toString());
   }, [currentView]);
+
+  // Auto-detect active tournament if not set (for guests/new visitors)
+  useEffect(() => {
+    const detectActiveTournament = async () => {
+      if (!activeTournamentId) {
+        try {
+          const { getTournaments } = await import('./api');
+          const tournaments = await getTournaments();
+          const active = tournaments.find((t: any) => t.status === 'in_progress');
+          if (active) {
+            setActiveTournamentId(active.id);
+          }
+        } catch (error) {
+          console.error('Error detecting active tournament:', error);
+        }
+      }
+    };
+    detectActiveTournament();
+  }, [activeTournamentId]);
 
   useEffect(() => {
     if (activeTournamentId) {
@@ -81,34 +104,49 @@ function App() {
           </button>
 
           <nav className={isMenuOpen ? 'mobile-open' : ''}>
+            {/* Login/Logout Icons */}
+            {!isAdmin ? (
+              <button className="nav-btn auth-btn" onClick={() => { setIsLoginModalOpen(true); setIsMenuOpen(false); }}>
+                <LogIn size={18} /> <span className="mobile-text">Login</span>
+              </button>
+            ) : (
+              <button className="nav-btn auth-btn logout" onClick={() => { logout(); setIsMenuOpen(false); }}>
+                <LogOut size={18} /> <span className="mobile-text">Cerrar Sesión</span>
+              </button>
+            )}
+
             <button
               className={`nav-btn ${currentView === 'home' ? 'active' : ''}`}
               onClick={() => navigateTo('home')}
             >
               <HomeIcon size={18} /> Inicio
             </button>
-            <button
-              className={`nav-btn ${currentView === 'players' ? 'active' : ''}`}
-              onClick={() => navigateTo('players')}
-            >
-              <Users size={18} /> Jugadores
-            </button>
+            {isAdmin && (
+              <button
+                className={`nav-btn ${currentView === 'players' ? 'active' : ''}`}
+                onClick={() => navigateTo('players')}
+              >
+                <Users size={18} /> Jugadores
+              </button>
+            )}
             <button
               className={`nav-btn ${currentView === 'rules' ? 'active' : ''}`}
               onClick={() => navigateTo('rules')}
             >
               <BookOpen size={18} /> Reglas
             </button>
-            <button
-              className={`nav-btn ${currentView === 'tournament' && !activeTournamentId ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTournamentId(null);
-                navigateTo('tournament');
-                setIsEditing(false);
-              }}
-            >
-              <Calendar size={18} /> Nueva
-            </button>
+            {isAdmin && (
+              <button
+                className={`nav-btn ${currentView === 'tournament' && !activeTournamentId ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTournamentId(null);
+                  navigateTo('tournament');
+                  setIsEditing(false);
+                }}
+              >
+                <Calendar size={18} /> Nueva
+              </button>
+            )}
             {activeTournamentId && (
               <button
                 className={`nav-btn ${currentView === 'tournament' && activeTournamentId && !isEditing ? 'active' : ''}`}
@@ -182,6 +220,11 @@ function App() {
             <p className="footer-version">v 1.6</p>
           </div>
         </footer>
+
+        <LoginModal
+          isOpen={isLoginModalOpen}
+          onClose={() => setIsLoginModalOpen(false)}
+        />
       </div>
     </QueryClientProvider>
   )

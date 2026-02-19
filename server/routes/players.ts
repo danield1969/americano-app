@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import pool from '../config/database';
+import { authenticateToken } from '../middleware/auth';
 
 
 const router = Router();
@@ -15,7 +16,7 @@ router.get('/', async (_req, res) => {
 });
 
 // Add player
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required' });
 
@@ -29,7 +30,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update player
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { name, active } = req.body;
   try {

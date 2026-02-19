@@ -7,6 +7,19 @@ const api = axios.create({
   }
 });
 
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('admin_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export const loginAdmin = async (password: string) => {
+  const response = await api.post('/auth/login', { password });
+  return response.data;
+};
+
 export const getPlayers = async () => {
   const response = await api.get('/players');
   return response.data;

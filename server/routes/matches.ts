@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import pool from '../config/database';
 import { shuffleSingleMatch } from '../services/matchmaker';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
 // Shuffle Match
-router.post('/:id/shuffle', async (req, res) => {
+router.post('/:id/shuffle', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
-    await shuffleSingleMatch(parseInt(id));
+    await shuffleSingleMatch(parseInt(id as string));
     res.json({ success: true });
   } catch (error: any) {
     console.error(error);
@@ -17,7 +18,7 @@ router.post('/:id/shuffle', async (req, res) => {
 });
 
 // Submit Score
-router.post('/:id/score', async (req, res) => {
+router.post('/:id/score', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { team1Score, team2Score } = req.body;
 
@@ -33,7 +34,7 @@ router.post('/:id/score', async (req, res) => {
     const [players] = await connection.query('SELECT player_id, opponent_team_id FROM match_players WHERE match_id = ?', [id]);
 
     // 2. Update match_players score (SAVE RAW SCORES AND CALCULATED POINTS)
-    const matchIdInt = parseInt(id);
+    const matchIdInt = parseInt(id as string);
     const t1ScoreRaw = parseInt(team1Score as string) || 0;
     const t2ScoreRaw = parseInt(team2Score as string) || 0;
 
@@ -98,7 +99,7 @@ router.post('/:id/score', async (req, res) => {
 });
 
 // Update Individual Match Player
-router.put('/:id/players', async (req, res) => {
+router.put('/:id/players', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { oldPlayerId, newPlayerId } = req.body;
 
@@ -160,7 +161,7 @@ router.put('/:id/players', async (req, res) => {
 });
 
 // Delete Match
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const connection = await pool.getConnection();
   try {

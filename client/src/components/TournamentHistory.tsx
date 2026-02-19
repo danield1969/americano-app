@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTournaments, deleteTournament } from '../api';
 import { Calendar, ChevronRight, CheckCircle, PlayCircle, Trash2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import './TournamentHistory.css';
 
 interface TournamentHistoryProps {
@@ -14,6 +15,7 @@ export default function TournamentHistory({ onSelectTournament, onTournamentDele
     queryKey: ['tournaments'],
     queryFn: getTournaments
   });
+  const { isAdmin } = useAuth();
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteTournament(id),
@@ -89,14 +91,16 @@ export default function TournamentHistory({ onSelectTournament, onTournamentDele
                 </span>
               )}
 
-              <button
-                className="delete-history-btn"
-                onClick={(e) => handleDelete(e, t.id, t.date)}
-                disabled={deleteMutation.isPending}
-                title="Eliminar Jornada"
-              >
-                <Trash2 size={18} />
-              </button>
+              {isAdmin && (
+                <button
+                  className="delete-history-btn"
+                  onClick={(e) => handleDelete(e, t.id, t.date)}
+                  disabled={deleteMutation.isPending}
+                  title="Eliminar Jornada"
+                >
+                  <Trash2 size={18} />
+                </button>
+              )}
 
               <ChevronRight size={20} className="chevron" />
             </div>

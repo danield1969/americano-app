@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import pool from '../config/database';
 import { generateTournamentPlan, generateRound, generateNextMatch } from '../services/matchmaker';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
 // Create Tournament
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   const { date, location, courtsAvailable, playerIds, matchesPerPlayer, modality } = req.body;
 
   if (!date || !courtsAvailable || !playerIds || playerIds.length < 8) {
@@ -66,7 +67,7 @@ router.get('/', async (_req, res) => {
 });
 
 // Delete Tournament
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const connection = await pool.getConnection();
   try {
@@ -99,7 +100,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Update Tournament (Players and Basic Info)
-router.put('/:id/players', async (req, res) => {
+router.put('/:id/players', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { date, location, courtsAvailable, playerIds, modality } = req.body;
 
@@ -226,7 +227,7 @@ router.get('/:id/standings', async (req, res) => {
 });
 
 // Shuffle Tournament (Regenerate ONLY unplayed matches)
-router.post('/:id/shuffle', async (req, res) => {
+router.post('/:id/shuffle', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const connection = await pool.getConnection();
   try {
@@ -265,7 +266,7 @@ router.post('/:id/shuffle', async (req, res) => {
     // only regenerate the "next round" or the "plan" depending on preference.
     // The user said "revolver las partidas generadas y que no tengan ningún score anotado".
     // If they were already generated, we recreate them.
-    await generateTournamentPlan(parseInt(id), matchesPerPlayer);
+    await generateTournamentPlan(parseInt(id as string), matchesPerPlayer);
 
     res.json({ message: 'Partidos unplayed revueltos correctamente' });
   } catch (error: any) {
@@ -279,7 +280,7 @@ router.post('/:id/shuffle', async (req, res) => {
 
 
 // Simulate Tournament (Generate all matches and fill with scores)
-router.post('/:id/simulate', async (req, res) => {
+router.post('/:id/simulate', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const connection = await pool.getConnection();
   try {
@@ -289,7 +290,7 @@ router.post('/:id/simulate', async (req, res) => {
     const { matches_per_player: matchesPerPlayer, modality } = (tRows as any)[0];
 
     // Generate all remaining matches
-    await generateTournamentPlan(parseInt(id), matchesPerPlayer);
+    await generateTournamentPlan(parseInt(id as string), matchesPerPlayer);
 
     await connection.beginTransaction();
 
@@ -360,10 +361,10 @@ router.post('/:id/simulate', async (req, res) => {
 });
 
 // Generate Next Round
-router.post('/:id/next-round', async (req, res) => {
+router.post('/:id/next-round', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
-    const matches = await generateRound(parseInt(id));
+    const matches = await generateRound(parseInt(id as string));
     res.json({ message: 'Siguiente ronda generada', matches });
   } catch (error: any) {
     console.error('Next Round Error:', error);
@@ -372,11 +373,11 @@ router.post('/:id/next-round', async (req, res) => {
 });
 
 // Generate Next Match (INDIVIDUAL)
-router.post('/:id/next-match', async (req, res) => {
+router.post('/:id/next-match', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { force, courtProgress } = req.body;
   try {
-    const result = await generateNextMatch(parseInt(id), force, courtProgress);
+    const result = await generateNextMatch(parseInt(id as string), force, courtProgress);
     if ((result as any).error === 'BUSY_COURTS') {
       return res.status(409).json({ error: 'BUSY_COURTS', message: 'Todas las canchas están ocupadas.' });
     }
@@ -388,7 +389,7 @@ router.post('/:id/next-match', async (req, res) => {
 });
 
 // Update Tournament Status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
 

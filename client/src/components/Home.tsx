@@ -1,4 +1,5 @@
-import { Users, Calendar, History, BarChart2, Zap } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { Users, Calendar, History, BarChart2, Zap, Trophy } from 'lucide-react';
 import './Home.css';
 
 interface HomeProps {
@@ -6,6 +7,7 @@ interface HomeProps {
 }
 
 export default function Home({ onNavigate }: HomeProps) {
+  const { isAdmin } = useAuth();
   return (
     <div className="home-container">
       <section className="hero-section">
@@ -21,33 +23,52 @@ export default function Home({ onNavigate }: HomeProps) {
       </section>
 
       <div className="main-actions-grid animate-fade-in-up">
-        <button className="home-card glass-panel orange-glow" onClick={() => onNavigate('players')}>
+        {/* Torneo en Curso (Siempre visible o condicional, el usuario pidió agregarlo como tercero o adicional) */}
+        <button className="home-card glass-panel blue-glow" onClick={() => onNavigate('tournament')}>
           <div className="card-icon">
-            <Users size={32} />
+            <Trophy size={32} />
           </div>
           <div className="card-body">
-            <h3>Gestión de Jugadores</h3>
-            <p>Añade, edita y gestiona el roster de tenistas activos de tu club.</p>
+            <h3>Torneo en Curso</h3>
+            <p>Consulta los partidos en tiempo real, la tabla de posiciones y resultados de hoy.</p>
           </div>
           <div className="card-footer">
-            <span>Configurar comunidad</span>
+            <span>Ver jornada hoy</span>
             <Zap size={14} className="icon-tiny" />
           </div>
         </button>
 
-        <button className="home-card glass-panel blue-glow" onClick={() => onNavigate('tournament')}>
-          <div className="card-icon">
-            <Calendar size={32} />
-          </div>
-          <div className="card-body">
-            <h3>Nueva Jornada</h3>
-            <p>Inicia un torneo hoy. Generación automática de partidos y canchas.</p>
-          </div>
-          <div className="card-footer">
-            <span>Empezar ahora</span>
-            <Zap size={14} className="icon-tiny" />
-          </div>
-        </button>
+        {isAdmin && (
+          <button className="home-card glass-panel orange-glow" onClick={() => onNavigate('players')}>
+            <div className="card-icon">
+              <Users size={32} />
+            </div>
+            <div className="card-body">
+              <h3>Gestión de Jugadores</h3>
+              <p>Añade, edita y gestiona el roster de tenistas activos de tu club.</p>
+            </div>
+            <div className="card-footer">
+              <span>Configurar comunidad</span>
+              <Zap size={14} className="icon-tiny" />
+            </div>
+          </button>
+        )}
+
+        {isAdmin && (
+          <button className="home-card glass-panel blue-glow" onClick={() => onNavigate('tournament')}>
+            <div className="card-icon">
+              <Calendar size={32} />
+            </div>
+            <div className="card-body">
+              <h3>Nueva Jornada</h3>
+              <p>Inicia un torneo hoy. Generación automática de partidos y canchas.</p>
+            </div>
+            <div className="card-footer">
+              <span>Empezar ahora</span>
+              <Zap size={14} className="icon-tiny" />
+            </div>
+          </button>
+        )}
 
         <button className="home-card glass-panel purple-glow" onClick={() => onNavigate('history')}>
           <div className="card-icon">

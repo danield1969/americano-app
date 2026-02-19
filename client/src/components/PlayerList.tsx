@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getPlayers, createPlayer, togglePlayerStatus, updatePlayer } from '../api';
 import { Plus, User, UserX, Check, Edit2, Save, X } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import './PlayerList.css';
 
 interface Player {
@@ -15,6 +16,7 @@ export default function PlayerList() {
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
+  const { isAdmin } = useAuth();
 
   const { data: players, isLoading } = useQuery({ queryKey: ['players'], queryFn: getPlayers });
 
@@ -66,23 +68,25 @@ export default function PlayerList() {
         <span className="badge">{players?.length || 0} Total</span>
       </div>
 
-      <form onSubmit={handleSubmit} className="add-player-form">
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Nombre del nuevo jugador..."
-          className="input-field"
-        />
-        <button type="submit" className="btn-primary" disabled={addMutation.isPending}>
-          <Plus size={18} /> Agregar
-        </button>
-      </form>
+      {isAdmin && (
+        <form onSubmit={handleSubmit} className="add-player-form">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Nombre del nuevo jugador..."
+            className="input-field"
+          />
+          <button type="submit" className="btn-primary" disabled={addMutation.isPending}>
+            <Plus size={18} /> Agregar
+          </button>
+        </form>
+      )}
 
       <div className="players-grid">
         {players?.map((player: Player) => (
           <div key={player.id} className={`player-card ${!player.active ? 'inactive' : ''}`}>
-            {editingId !== player.id ? (
+            {isAdmin && editingId !== player.id ? (
               <button
                 className="action-btn edit-icon-left"
                 onClick={() => startEditing(player)}
@@ -117,15 +121,17 @@ export default function PlayerList() {
             ) : (
               <>
                 <span className="player-name">{player.name}</span>
-                <div className="player-actions">
-                  <button
-                    className="action-btn"
-                    onClick={() => toggleMutation.mutate({ id: player.id, active: !player.active })}
-                    title={player.active ? "Desactivar" : "Activar"}
-                  >
-                    {player.active ? <Check size={16} className="text-success" /> : <UserX size={16} />}
-                  </button>
-                </div>
+                {isAdmin && (
+                  <div className="player-actions">
+                    <button
+                      className="action-btn"
+                      onClick={() => toggleMutation.mutate({ id: player.id, active: !player.active })}
+                      title={player.active ? "Desactivar" : "Activar"}
+                    >
+                      {player.active ? <Check size={16} className="text-success" /> : <UserX size={16} />}
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
