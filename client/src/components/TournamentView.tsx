@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trophy, Activity, Edit2, Check, RefreshCcw, MapPin, Trash2 } from 'lucide-react';
 import './TournamentView.css';
@@ -30,6 +30,11 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
     queryFn: () => getTournamentStandings(tournamentId),
     refetchInterval: 5000
   });
+
+  const alphabeticalPlayers = useMemo(() => {
+    if (!standings) return [];
+    return [...standings].sort((a, b) => a.name.localeCompare(b.name));
+  }, [standings]);
 
   const scoreMutation = useMutation({
     mutationFn: (data: { id: number, t1: number, t2: number }) => submitMatchScore(data.id, data.t1, data.t2),
@@ -307,7 +312,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                             })}
                                             disabled={updatePlayerMutation.isPending}
                                           >
-                                            {standings?.map((s: any) => (
+                                            {alphabeticalPlayers.map((s: any) => (
                                               <option key={s.player_id} value={s.player_id}>
                                                 {s.name} {s.games_played >= (tournamentData?.matches_per_player || 3) ? ' (C)' : ''}
                                               </option>
@@ -371,7 +376,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                             })}
                                             disabled={updatePlayerMutation.isPending}
                                           >
-                                            {standings?.map((s: any) => (
+                                            {alphabeticalPlayers.map((s: any) => (
                                               <option key={s.player_id} value={s.player_id}>
                                                 {s.name} {s.games_played >= (tournamentData?.matches_per_player || 3) ? ' (C)' : ''}
                                               </option>
