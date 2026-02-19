@@ -7,6 +7,7 @@ import tournamentRoutes from './routes/tournaments';
 import matchesRoutes from './routes/matches';
 
 dotenv.config();
+process.env.TZ = 'America/Caracas';
 
 const app = express();
 const PORT = process.env.PORT || 3000;

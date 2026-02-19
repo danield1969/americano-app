@@ -15,7 +15,7 @@ export default function TournamentSetup({
   existingTournamentId,
   onCancel
 }: TournamentSetupProps) {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Caracas' }).format(new Date()));
   const [location, setLocation] = useState('');
   const [courts, setCourts] = useState(2);
   const [matchesPerPlayer, setMatchesPerPlayer] = useState(3);
