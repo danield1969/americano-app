@@ -101,6 +101,11 @@ export const deleteMatch = async (id: number) => {
   return response.data;
 };
 
+export const updateTournamentStatus = async (id: number, status: 'planned' | 'in_progress' | 'completed') => {
+  const response = await api.patch(`/tournaments/${id}/status`, { status });
+  return response.data;
+};
+
 export const getGlobalStats = async () => {
   const response = await api.get('/players/stats/global');
   return response.data;

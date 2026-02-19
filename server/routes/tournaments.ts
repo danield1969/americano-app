@@ -387,4 +387,21 @@ router.post('/:id/next-match', async (req, res) => {
   }
 });
 
+// Update Tournament Status
+router.patch('/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!['planned', 'in_progress', 'completed'].includes(status)) {
+    return res.status(400).json({ error: 'Estado inválido' });
+  }
+
+  try {
+    await pool.query('UPDATE tournaments SET status = ? WHERE id = ?', [status, id]);
+    res.json({ message: 'Estado del torneo actualizado' });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Error al actualizar estado: ' + error.message });
+  }
+});
+
 export default router;

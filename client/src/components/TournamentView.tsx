@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trophy, Activity, Edit2, Check, RefreshCcw, MapPin, Trash2 } from 'lucide-react';
 import './TournamentView.css';
-import { getTournamentMatches, getTournamentStandings, submitMatchScore, getTournament, simulateTournament, generateNextMatch, shuffleMatch, updateMatchPlayer, deleteMatch } from '../api';
+import { getTournamentMatches, getTournamentStandings, submitMatchScore, getTournament, simulateTournament, generateNextMatch, shuffleMatch, updateMatchPlayer, deleteMatch, updateTournamentStatus } from '../api';
 
 interface TournamentViewProps {
   tournamentId: number;
@@ -123,6 +123,15 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
     onError: (err: any) => alert(err.response?.data?.error || 'Error al eliminar el partido')
   });
 
+  const statusMutation = useMutation({
+    mutationFn: (status: 'planned' | 'in_progress' | 'completed') => updateTournamentStatus(tournamentId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tournament', tournamentId] });
+      queryClient.invalidateQueries({ queryKey: ['tournaments'] });
+    },
+    onError: (err: any) => alert(err.response?.data?.error || 'Error al actualizar estado')
+  });
+
 
   const handleScoreChange = (matchId: number, team: 1 | 2, val: string) => {
     setScores(prev => ({ ...prev, [`${matchId}_${team}`]: val }));
@@ -209,7 +218,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                 );
               })()}
             </div>
-            {!matchesLoading && matchData?.matches?.length > 0 && (
+            {!matchesLoading && matchData?.matches?.length > 0 && tournamentData?.status !== 'completed' && (
               <div className="header-actions">
                 <button
                   className="simulate-btn"
@@ -250,7 +259,7 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
               <button
                 className="btn-primary"
                 onClick={() => nextMatchMutation.mutate(false)}
-                disabled={nextMatchMutation.isPending}
+                disabled={nextMatchMutation.isPending || tournamentData?.status === 'completed'}
                 style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
               >
                 {nextMatchMutation.isPending ? 'Generando...' : 'Generar Nuevo Partido'}
@@ -276,6 +285,24 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
 
             {matchesLoading ? <div className="loading">Cargando partidos...</div> : (
               <div className="rounds-list">
+                <div className="rounds-header-actions">
+                  <div className="status-finish-toggle" title="Finalizar torneo manualmente">
+                    <span className="toggle-label">Torneo Finalizado</span>
+                    <button
+                      className={`toggle-switch ${tournamentData?.status === 'completed' ? 'active' : ''}`}
+                      onClick={() => {
+                        const newStatus = tournamentData?.status === 'completed' ? 'in_progress' : 'completed';
+                        if (confirm(`¿Marcar torneo como ${newStatus === 'completed' ? 'FINALIZADO' : 'EN CURSO'}?`)) {
+                          statusMutation.mutate(newStatus);
+                        }
+                      }}
+                      disabled={statusMutation.isPending}
+                    >
+                      <div className="toggle-knob" />
+                    </button>
+                  </div>
+                </div>
+
                 {rounds.length === 0 && <p className="empty-state">No hay partidos planificados.</p>}
 
                 {rounds.map(roundNum => (
