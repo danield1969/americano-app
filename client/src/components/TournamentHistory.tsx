@@ -72,7 +72,7 @@ export default function TournamentHistory({ onSelectTournament, onTournamentDele
             </div>
 
             <div className="t-status">
-              {(t.completed_matches || 0) >= Math.ceil(((t.player_count || 0) * (t.matches_per_player || 3)) / 4) ? (
+              {t.status === 'completed' ? (
                 <span className="status-badge completed">
                   <CheckCircle size={14} /> Finalizado
                 </span>
