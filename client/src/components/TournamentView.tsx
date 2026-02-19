@@ -346,7 +346,16 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                 )}
                               </div>
 
-                              <div className="team-row">
+                              <div className="team-row reverse">
+                                <input
+                                  type="number"
+                                  className="score-box"
+                                  placeholder="0"
+                                  value={scores[`${match.id}_2`] !== undefined ? scores[`${match.id}_2`] : dbScore2}
+                                  onChange={(e) => handleScoreChange(match.id, 2, e.target.value)}
+                                  onFocus={(e) => e.target.select()}
+                                  onKeyDown={(e) => e.key === 'Enter' && handleSaveScore(match.id)}
+                                />
                                 <div className="team-info">
                                   {team2.map((p: any) => (
                                     <div key={p.player_id} className="player-selector-container">
@@ -378,15 +387,6 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                                     </div>
                                   ))}
                                 </div>
-                                <input
-                                  type="number"
-                                  className="score-box"
-                                  placeholder="0"
-                                  value={scores[`${match.id}_2`] !== undefined ? scores[`${match.id}_2`] : dbScore2}
-                                  onChange={(e) => handleScoreChange(match.id, 2, e.target.value)}
-                                  onFocus={(e) => e.target.select()}
-                                  onKeyDown={(e) => e.key === 'Enter' && handleSaveScore(match.id)}
-                                />
                               </div>
                             </div>
 
