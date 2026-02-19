@@ -90,6 +90,11 @@
   font-weight: 600;
 }
 
+.draws-cell {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
 .defeats-cell {
   color: #f87171;
   font-weight: 600;

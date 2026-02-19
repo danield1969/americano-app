@@ -83,6 +83,16 @@ router.get('/stats/global', async (_req, res) => {
           JOIN match_players opp ON mp.match_id = opp.match_id AND mp.opponent_team_id != opp.opponent_team_id
           WHERE mp.player_id = p.id 
           AND mp.is_filler = 0
+          AND mp.score_obtained = opp.score_obtained
+          AND (SELECT SUM(score_obtained) FROM match_players WHERE match_id = mp.match_id) > 0
+          AND opp.player_id = (SELECT MIN(player_id) FROM match_players WHERE match_id = mp.match_id AND opponent_team_id != mp.opponent_team_id)
+        ) as draws,
+        (
+          SELECT COUNT(*) 
+          FROM match_players mp
+          JOIN match_players opp ON mp.match_id = opp.match_id AND mp.opponent_team_id != opp.opponent_team_id
+          WHERE mp.player_id = p.id 
+          AND mp.is_filler = 0
           AND mp.score_obtained < opp.score_obtained
           AND opp.player_id = (SELECT MIN(player_id) FROM match_players WHERE match_id = mp.match_id AND opponent_team_id != mp.opponent_team_id)
         ) as defeats,

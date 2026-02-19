@@ -27,6 +27,7 @@ export default function GlobalStats() {
               <th>Jugador</th>
               <th title="Jornadas Jugadas">JJ</th>
               <th title="Ganados">G</th>
+              <th title="Empatados">E</th>
               <th title="Perdidos">P</th>
               <th title="Efectividad (%)">% G</th>
               <th title="Promedio Puntos por Partido">Prom</th>
@@ -37,7 +38,7 @@ export default function GlobalStats() {
           </thead>
           <tbody>
             {stats?.map((player: any, idx: number) => {
-              const totalMatches = (player.victories || 0) + (player.defeats || 0);
+              const totalMatches = (player.victories || 0) + (player.draws || 0) + (player.defeats || 0);
               const effectiveness = totalMatches > 0
                 ? ((player.victories / totalMatches) * 100).toFixed(1)
                 : '0.0';
@@ -56,6 +57,7 @@ export default function GlobalStats() {
                   <td className="player-name-cell">{player.name}</td>
                   <td>{player.tournaments_played || 0}</td>
                   <td className="victories-cell">{player.victories || 0}</td>
+                  <td className="draws-cell">{player.draws || 0}</td>
                   <td className="defeats-cell">{player.defeats || 0}</td>
                   <td className="effectiveness-cell">{effectiveness}%</td>
                   <td className="avg-cell">{pointsPerMatch}</td>
@@ -71,7 +73,7 @@ export default function GlobalStats() {
 
       <div className="stats-legend">
         <div className="legend-item"><Hash size={14} /> JJ: Jornadas Jugadas</div>
-        <div className="legend-item"><CheckCircle size={14} /> G/P: Ganados / Perdidos</div>
+        <div className="legend-item"><CheckCircle size={14} /> G/E/P: Ganados / Empatados / Perdidos</div>
         <div className="legend-item"><Target size={14} /> % G: Efectividad (Victorias / Partidos)</div>
         <div className="legend-item"><Trophy size={14} /> Prom: Promedio de puntos por partido</div>
       </div>
