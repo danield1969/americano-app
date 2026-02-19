@@ -445,17 +445,24 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                   <th>Jugador</th>
                   <th>PJ</th>
                   <th>Puntos</th>
+                  <th>Promedio</th>
                 </tr>
               </thead>
               <tbody>
-                {standings?.map((p: any, idx: number) => (
-                  <tr key={p.player_id}>
-                    <td>{idx + 1}</td>
-                    <td>{p.name}</td>
-                    <td>{p.games_played}</td>
-                    <td className="points-cell">{p.current_score}</td>
-                  </tr>
-                ))}
+                {standings?.map((p: any, idx: number) => {
+                  const promedio = p.games_played > 0
+                    ? (p.current_score / p.games_played).toFixed(2)
+                    : '0.00';
+                  return (
+                    <tr key={p.player_id}>
+                      <td>{idx + 1}</td>
+                      <td>{p.name}</td>
+                      <td>{p.games_played}</td>
+                      <td className="points-cell">{p.current_score}</td>
+                      <td className="avg-cell">{promedio}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

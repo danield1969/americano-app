@@ -568,6 +568,11 @@
   color: var(--accent-primary);
 }
 
+.avg-cell {
+  font-weight: 600;
+  color: #38bdf8;
+}
+
 @media (max-width: 532px) {
   .ranking-section {
     padding: 0.5rem;
@@ -585,8 +590,8 @@
   }
 
   /* Specific column widths for mobile */
-  .ranking-table th:first-child,
-  .ranking-table td:first-child {
+  .ranking-table th:nth-child(1),
+  .ranking-table td:nth-child(1) {
     width: 25px;
     text-align: center;
   }
@@ -597,9 +602,15 @@
     text-align: center;
   }
 
-  .ranking-table th:last-child,
-  .ranking-table td:last-child {
-    width: 60px;
+  .ranking-table th:nth-child(4),
+  .ranking-table td:nth-child(4) {
+    width: 50px;
+    text-align: center;
+  }
+
+  .ranking-table th:nth-child(5),
+  .ranking-table td:nth-child(5) {
+    width: 65px;
     text-align: center;
   }
 }
