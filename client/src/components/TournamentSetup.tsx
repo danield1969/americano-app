@@ -205,7 +205,7 @@ export default function TournamentSetup({
           {createMutation.isPending ? 'Procesando...' : (existingTournamentId ? 'Actualizar Jugadores' : 'Comenzar Torneo')}
         </button>
         {selectedPlayers.length < 8 && <p className="warning-text">Mínimo 8 jugadores requeridos.</p>}
-        <p className="info-rule-text">Se podrá agregar o quitar jugadores siempre y cuando no se haya completado la primera ronda de partidos. Si ya todos los jugadores presentes jugaron su primer juego no se podrá incluir ningún otro jugador.</p>
+        <p className="info-rule-text">Se pueden agregar o quitar jugadores en cualquier momento. Si el torneo ya comenzó y se agrega un nuevo jugador, el sistema calculará automáticamente los partidos adicionales necesarios para que todos completen sus juegos reglamentarios.</p>
       </form>
     </div>
   );

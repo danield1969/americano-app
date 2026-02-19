@@ -117,16 +117,42 @@ router.put('/:id/players', async (req, res) => {
       [date, location || null, courtsAvailable, modality || '16 puntos', id]
     );
 
-    // 2. Replace players
-    await connection.query('DELETE FROM tournament_players WHERE tournament_id = ?', [id]);
-    const playerValues = playerIds.map((pid: number) => [id, pid, 0]);
-    await connection.query(
-      'INSERT INTO tournament_players (tournament_id, player_id, current_score) VALUES ?',
-      [playerValues]
-    );
+    // 2. Sync players (Add new, remove old, keep existing)
+    // Get current players
+    const [currentRows] = await connection.query('SELECT player_id FROM tournament_players WHERE tournament_id = ?', [id]);
+    const currentPlayerIds = (currentRows as any[]).map(r => r.player_id);
+
+    const playersToRemove = currentPlayerIds.filter(pid => !playerIds.includes(pid));
+    const playersToAdd = playerIds.filter((pid: number) => !currentPlayerIds.includes(pid));
+
+    if (playersToRemove.length > 0) {
+      await connection.query('DELETE FROM tournament_players WHERE tournament_id = ? AND player_id IN (?)', [id, playersToRemove]);
+    }
+
+    if (playersToAdd.length > 0) {
+      const playerValues = playersToAdd.map((pid: number) => [id, pid, 0]);
+      await connection.query(
+        'INSERT INTO tournament_players (tournament_id, player_id, current_score) VALUES ?',
+        [playerValues]
+      );
+    }
+
+    // 3. Recalculate all standings
+    const [allPlayers] = await connection.query('SELECT player_id FROM tournament_players WHERE tournament_id = ?', [id]);
+    for (const p of (allPlayers as any[])) {
+      const [sumRow] = (await connection.query(`
+            SELECT SUM(mp.points_won) as total 
+            FROM match_players mp 
+            JOIN matches m ON mp.match_id = m.id 
+            WHERE mp.player_id = ? AND m.tournament_id = ? AND mp.is_filler = 0
+        `, [p.player_id, id])) as any;
+
+      const newTotal = sumRow[0].total || 0;
+      await connection.query('UPDATE tournament_players SET current_score = ? WHERE player_id = ? AND tournament_id = ?', [newTotal, p.player_id, id]);
+    }
 
     await connection.commit();
-    res.json({ message: 'Torneo actualizado correctamente' });
+    res.json({ message: 'Torneo actualizado correctamente y puntajes recalculados' });
   } catch (error: any) {
     if (connection) await connection.rollback();
     console.error('Update Error:', error);

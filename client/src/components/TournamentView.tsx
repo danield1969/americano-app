@@ -183,11 +183,26 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
               <span className="info-item modality-badge">Modalidad: <strong>{tournamentData?.modality || '16 puntos'}</strong></span>
             </div>
             <div className="header-subtitle stats-row">
-              <span className="info-item highlight">Partidos Totales: {Math.ceil(((standings?.length || 0) * (tournamentData?.matches_per_player || 3)) / 4)}</span>
-              <span className="info-item highlight">Partidos Terminados: {matchData?.matches?.filter((m: any) => {
-                const p = matchData?.players?.filter((pp: any) => pp.match_id === m.id) || [];
-                return p.some((pp: any) => pp.score_obtained > 0);
-              }).length || 0}</span>
+              {(() => {
+                const matchesPerPlayer = tournamentData?.matches_per_player || 3;
+                const playersProgress = standings?.map((s: any) => {
+                  const assignedCount = matchData?.players?.filter((p: any) => p.player_id === s.player_id && !p.is_filler).length || 0;
+                  return Math.max(0, matchesPerPlayer - assignedCount);
+                }) || [];
+                const extraMatchesNeeded = playersProgress.length > 0 ? Math.max(...playersProgress) : 0;
+                const estimatedTotal = (matchData?.matches?.length || 0) + extraMatchesNeeded;
+                const completedCount = matchData?.matches?.filter((m: any) => {
+                  const p = matchData?.players?.filter((pp: any) => pp.match_id === m.id) || [];
+                  return p.some((pp: any) => pp.score_obtained > 0);
+                }).length || 0;
+
+                return (
+                  <>
+                    <span className="info-item highlight">Partidos Totales: {estimatedTotal}</span>
+                    <span className="info-item highlight">Partidos Terminados: {completedCount}</span>
+                  </>
+                );
+              })()}
             </div>
             {!matchesLoading && matchData?.matches?.length > 0 && (
               <div className="header-actions">
@@ -236,11 +251,22 @@ export default function TournamentView({ tournamentId, onEdit }: TournamentViewP
                 {nextMatchMutation.isPending ? 'Generando...' : 'Generar Nuevo Partido'}
               </button>
 
-              {matchData?.matches?.length >= Math.ceil(((standings?.length || 0) * (tournamentData?.matches_per_player || 3)) / 4) && (
-                <p className="completion-message" style={{ color: '#10b981', fontWeight: '600', fontSize: '1.1rem', textAlign: 'center', marginTop: '5px' }}>
-                  Se han completado todos los partidos del Americano
-                </p>
-              )}
+              {(() => {
+                const matchesPerPlayer = tournamentData?.matches_per_player || 3;
+                const allFinished = standings?.every((s: any) => {
+                  const assignedCount = matchData?.players?.filter((p: any) => p.player_id === s.player_id && !p.is_filler).length || 0;
+                  return assignedCount >= matchesPerPlayer;
+                });
+
+                if (allFinished && matchData?.matches?.length > 0) {
+                  return (
+                    <p className="completion-message" style={{ color: '#10b981', fontWeight: '600', fontSize: '1.1rem', textAlign: 'center', marginTop: '5px' }}>
+                      Se han generado todos los partidos necesarios para que todos jueguen sus {matchesPerPlayer} juegos.
+                    </p>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             {matchesLoading ? <div className="loading">Cargando partidos...</div> : (
