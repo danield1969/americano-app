@@ -563,6 +563,27 @@
   font-size: 0.9rem;
 }
 
+.ranking-table th:nth-child(1),
+.ranking-table td:nth-child(1) {
+  width: 50px;
+  text-align: center;
+}
+
+.ranking-table th:nth-child(2),
+.ranking-table td:nth-child(2) {
+  text-align: left;
+}
+
+.ranking-table th:nth-child(3),
+.ranking-table td:nth-child(3),
+.ranking-table th:nth-child(4),
+.ranking-table td:nth-child(4),
+.ranking-table th:nth-child(5),
+.ranking-table td:nth-child(5) {
+  width: 100px;
+  text-align: center;
+}
+
 .points-cell {
   font-weight: 700;
   color: var(--accent-primary);
@@ -598,19 +619,15 @@
 
   .ranking-table th:nth-child(3),
   .ranking-table td:nth-child(3) {
-    width: 30px;
+    width: 45px;
     text-align: center;
   }
 
   .ranking-table th:nth-child(4),
-  .ranking-table td:nth-child(4) {
-    width: 50px;
-    text-align: center;
-  }
-
+  .ranking-table td:nth-child(4),
   .ranking-table th:nth-child(5),
   .ranking-table td:nth-child(5) {
-    width: 65px;
+    width: 70px;
     text-align: center;
   }
 }
