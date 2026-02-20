@@ -88,7 +88,7 @@ function App() {
       <div className="app-container">
         <header className="main-header glass-panel">
           <div className="header-brand" onClick={() => navigateTo('home')} style={{ cursor: 'pointer' }}>
-            <img src="/logo.png" alt="Tenis Club Logo" className="header-logo" />
+            <img src="/favicon.svg" alt="Tenis Club Logo" className="header-logo" />
             <div className="header-title">
               <span className="title-main">Tenis Club Puerto Azul</span>
               <span className="title-sub">6ª Master B</span>
