@@ -13,7 +13,7 @@ export default function Home({ onNavigate }: HomeProps) {
       <section className="hero-section">
         <div className="hero-content">
           <h1 className="hero-title animate-slide-up">
-            Eleva tu juego al <span className="text-gradient">siguiente nivel</span>
+            Crea tu <span className="text-gradient">torneo Americano</span>
           </h1>
           <p className="hero-subtitle animate-slide-up-delay">
             La plataforma definitiva para gestionar torneos de tenis estilo Americano.
